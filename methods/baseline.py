@@ -9,24 +9,31 @@ from methods.meta_template import MetaTemplate
 
 
 class Baseline(MetaTemplate):
-
-    def __init__(self, backbone, n_way, n_support, n_classes=1, loss='softmax', type='classification'):
+    def __init__(
+        self,
+        backbone,
+        n_way,
+        n_support,
+        n_classes=1,
+        loss="softmax",
+        type="classification",
+    ):
         super(Baseline, self).__init__(backbone, n_way, n_support, change_way=True)
         self.feature = backbone
         self.type = type
         self.n_classes = n_classes
 
-        if loss == 'softmax':
+        if loss == "softmax":
             self.classifier = nn.Linear(self.feature.final_feat_dim, n_classes)
             self.classifier.bias.data.fill_(0)
-        elif loss == 'dist':  # Baseline ++
+        elif loss == "dist":  # Baseline ++
             self.classifier = distLinear(self.feature.final_feat_dim, n_classes)
 
         self.loss_type = loss  # 'softmax' #'dist'
 
-        if self.type == 'classification':
+        if self.type == "classification":
             self.loss_fn = nn.CrossEntropyLoss()
-        elif self.type == 'regression':
+        elif self.type == "regression":
             self.loss_fn = nn.MSELoss()
 
         if torch.cuda.is_available():
@@ -48,7 +55,7 @@ class Baseline(MetaTemplate):
     def set_forward_loss(self, x, y):
         scores = self.forward(x)
         print(scores.shape)
-        if self.type == 'classification':
+        if self.type == "classification":
             y = y.long().cuda()
         else:
             y = y.cuda()
@@ -65,7 +72,7 @@ class Baseline(MetaTemplate):
 
             # if self.change_way:
             #     self.n_way = self.n_classes
-            
+
             loss.backward()
             optimizer.step()
 
@@ -73,8 +80,11 @@ class Baseline(MetaTemplate):
 
             if i % print_freq == 0:
                 # print(optimizer.state_dict()['param_groups'][0]['lr'])
-                print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f}'.format(epoch, i, len(train_loader),
-                                                                        avg_loss / float(i + 1)))
+                print(
+                    "Epoch {:d} | Batch {:d}/{:d} | Loss {:f}".format(
+                        epoch, i, len(train_loader), avg_loss / float(i + 1)
+                    )
+                )
                 wandb.log({"loss/train": avg_loss / float(i + 1)})
 
     def test_loop(self, test_loader, return_std=None):  # overwrite parrent function
@@ -101,10 +111,16 @@ class Baseline(MetaTemplate):
         acc_std = np.std(acc_all)
 
         if self.type == "classification":
-            print('%d Accuracy = %4.2f%% +- %4.2f%%' % (iter_num, acc_mean, 1.96 * acc_std / np.sqrt(iter_num)))
+            print(
+                "%d Accuracy = %4.2f%% +- %4.2f%%"
+                % (iter_num, acc_mean, 1.96 * acc_std / np.sqrt(iter_num))
+            )
         else:
             # print correlation
-            print('%d Correlation = %4.2f +- %4.2f' % (iter_num, acc_mean, 1.96 * acc_std / np.sqrt(iter_num)))
+            print(
+                "%d Correlation = %4.2f +- %4.2f"
+                % (iter_num, acc_mean, 1.96 * acc_std / np.sqrt(iter_num))
+            )
 
         if return_std:
             return acc_mean, acc_std
@@ -115,28 +131,47 @@ class Baseline(MetaTemplate):
         z_support, z_query = self.parse_feature(x, is_feature=False)
 
         # Detach ensures we don't change the weights in main training process
-        z_support = z_support.contiguous().view(self.n_way * self.n_support, -1).detach().to(self.device)
-        z_query = z_query.contiguous().view(self.n_way * self.n_query, -1).detach().to(self.device)
+        z_support = (
+            z_support.contiguous()
+            .view(self.n_way * self.n_support, -1)
+            .detach()
+            .to(self.device)
+        )
+        z_query = (
+            z_query.contiguous()
+            .view(self.n_way * self.n_query, -1)
+            .detach()
+            .to(self.device)
+        )
 
         if y is None:  # Classification
             y_support = torch.from_numpy(np.repeat(range(self.n_way), self.n_support))
             y_support = Variable(y_support.to(self.device))
         else:  # Regression
-            y_support = y[:, :self.n_support]
-            y_support = y_support.contiguous().view(self.n_way * self.n_support, -1).to(self.device)
+            y_support = y[:, : self.n_support]
+            y_support = (
+                y_support.contiguous()
+                .view(self.n_way * self.n_support, -1)
+                .to(self.device)
+            )
             # y_support = y_support.contiguous().view(self.n_way * y.size(1), -1)
 
-        if self.loss_type == 'softmax':
+        if self.loss_type == "softmax":
             linear_clf = nn.Linear(self.feat_dim, self.n_way)
-        elif self.loss_type == 'dist':
+        elif self.loss_type == "dist":
             linear_clf = distLinear(self.feat_dim, self.n_way)
         else:
-            raise ValueError('Loss type not supported')
+            raise ValueError("Loss type not supported")
 
         linear_clf = linear_clf.to(self.device)
 
-        set_optimizer = torch.optim.SGD(linear_clf.parameters(), lr=0.01, momentum=0.9, dampening=0.9,
-                                        weight_decay=0.001)
+        set_optimizer = torch.optim.SGD(
+            linear_clf.parameters(),
+            lr=0.01,
+            momentum=0.9,
+            dampening=0.9,
+            weight_decay=0.001,
+        )
 
         loss_function = self.loss_fn.to(self.device)
 
@@ -146,7 +181,9 @@ class Baseline(MetaTemplate):
             rand_id = np.random.permutation(support_size)
             for i in range(0, support_size, batch_size):
                 set_optimizer.zero_grad()
-                selected_id = torch.from_numpy(rand_id[i: min(i + batch_size, support_size)]).cuda()
+                selected_id = torch.from_numpy(
+                    rand_id[i : min(i + batch_size, support_size)]
+                ).cuda()
                 z_batch = z_support[selected_id]
                 y_batch = y_support[selected_id]
                 scores = linear_clf(z_batch)

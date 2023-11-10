@@ -1,6 +1,13 @@
 from torch import nn as nn
 
-from backbones.blocks import Conv2d_fw, BatchNorm2d_fw, init_layer, Flatten, SimpleBlock, BottleneckBlock
+from backbones.blocks import (
+    Conv2d_fw,
+    BatchNorm2d_fw,
+    init_layer,
+    Flatten,
+    SimpleBlock,
+    BottleneckBlock,
+)
 
 
 class ResNet(nn.Module):
@@ -10,14 +17,12 @@ class ResNet(nn.Module):
         # list_of_num_layers specifies number of layers in each stage
         # list_of_out_dims specifies number of output channel for each stage
         super(ResNet, self).__init__()
-        assert len(list_of_num_layers) == 4, 'Can have only four stages'
+        assert len(list_of_num_layers) == 4, "Can have only four stages"
         if self.maml:
-            conv1 = Conv2d_fw(3, 64, kernel_size=7, stride=2, padding=3,
-                              bias=False)
+            conv1 = Conv2d_fw(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
             bn1 = BatchNorm2d_fw(64)
         else:
-            conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
-                              bias=False)
+            conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
             bn1 = nn.BatchNorm2d(64)
 
         relu = nn.ReLU()
@@ -30,7 +35,6 @@ class ResNet(nn.Module):
 
         indim = 64
         for i in range(4):
-
             for j in range(list_of_num_layers[i]):
                 half_res = (i >= 1) and (j == 0)
                 B = block(indim, list_of_out_dims[i], half_res)

@@ -39,17 +39,26 @@ class MetaTemplate(nn.Module):
     def parse_feature(self, x, is_feature):
         if isinstance(x, list):
             x = [Variable(obj.to(self.device)) for obj in x]
-        else: x = Variable(x.to(self.device))
+        else:
+            x = Variable(x.to(self.device))
         if is_feature:
             z_all = x
         else:
             if isinstance(x, list):
-                x = [obj.contiguous().view(self.n_way * (self.n_support + self.n_query), *obj.size()[2:]) for obj in x]
-            else: x = x.contiguous().view(self.n_way * (self.n_support + self.n_query), *x.size()[2:])
+                x = [
+                    obj.contiguous().view(
+                        self.n_way * (self.n_support + self.n_query), *obj.size()[2:]
+                    )
+                    for obj in x
+                ]
+            else:
+                x = x.contiguous().view(
+                    self.n_way * (self.n_support + self.n_query), *x.size()[2:]
+                )
             z_all = self.feature.forward(x)
             z_all = z_all.view(self.n_way, self.n_support + self.n_query, -1)
-        z_support = z_all[:, :self.n_support]
-        z_query = z_all[:, self.n_support:]
+        z_support = z_all[:, : self.n_support]
+        z_query = z_all[:, self.n_support :]
 
         return z_support, z_query
 
@@ -64,7 +73,7 @@ class MetaTemplate(nn.Module):
 
     def correlation(self, x, y, type="pearson"):
         y_pred = self.set_forward(x, y).reshape(-1).to(self.device)
-        y_query = y[:, self.n_support:].reshape(-1).to(self.device)
+        y_query = y[:, self.n_support :].reshape(-1).to(self.device)
 
         if type == "pearson":
             # corr = pearsonr(y_pred, y_query)
@@ -84,7 +93,7 @@ class MetaTemplate(nn.Module):
                 self.n_query = x[0].size(1) - self.n_support
                 if self.change_way:
                     self.n_way = x[0].size(0)
-            else: 
+            else:
                 self.n_query = x.size(1) - self.n_support
                 if self.change_way:
                     self.n_way = x.size(0)
@@ -96,8 +105,11 @@ class MetaTemplate(nn.Module):
 
             if i % print_freq == 0:
                 # print(optimizer.state_dict()['param_groups'][0]['lr'])
-                print('Epoch {:d} | Batch {:d}/{:d} | Loss {:f}'.format(epoch, i, len(train_loader),
-                                                                        avg_loss / float(i + 1)))
+                print(
+                    "Epoch {:d} | Batch {:d}/{:d} | Loss {:f}".format(
+                        epoch, i, len(train_loader), avg_loss / float(i + 1)
+                    )
+                )
                 wandb.log({"loss": avg_loss / float(i + 1)})
 
     def test_loop(self, test_loader, record=None, return_std=False):
@@ -111,7 +123,7 @@ class MetaTemplate(nn.Module):
                 self.n_query = x[0].size(1) - self.n_support
                 if self.change_way:
                     self.n_way = x[0].size(0)
-            else: 
+            else:
                 self.n_query = x.size(1) - self.n_support
                 if self.change_way:
                     self.n_way = x.size(0)
@@ -121,16 +133,20 @@ class MetaTemplate(nn.Module):
         acc_all = np.asarray(acc_all)
         acc_mean = np.mean(acc_all)
         acc_std = np.std(acc_all)
-        print('%d Test Acc = %4.2f%% +- %4.2f%%' % (iter_num, acc_mean, 1.96 * acc_std / np.sqrt(iter_num)))
+        print(
+            "%d Test Acc = %4.2f%% +- %4.2f%%"
+            % (iter_num, acc_mean, 1.96 * acc_std / np.sqrt(iter_num))
+        )
 
         if return_std:
             return acc_mean, acc_std
         else:
             return acc_mean
 
-    def set_forward_adaptation(self, x,
-                               is_feature=True):  # further adaptation, default is fixing feature and train a new softmax clasifier
-        assert is_feature == True, 'Feature is fixed in further adaptation'
+    def set_forward_adaptation(
+        self, x, is_feature=True
+    ):  # further adaptation, default is fixing feature and train a new softmax clasifier
+        assert is_feature == True, "Feature is fixed in further adaptation"
         z_support, z_query = self.parse_feature(x, is_feature)
 
         z_support = z_support.contiguous().view(self.n_way * self.n_support, -1)
@@ -142,8 +158,13 @@ class MetaTemplate(nn.Module):
         linear_clf = nn.Linear(self.feat_dim, self.n_way)
         linear_clf = linear_clf.cuda()
 
-        set_optimizer = torch.optim.SGD(linear_clf.parameters(), lr=0.01, momentum=0.9, dampening=0.9,
-                                        weight_decay=0.001)
+        set_optimizer = torch.optim.SGD(
+            linear_clf.parameters(),
+            lr=0.01,
+            momentum=0.9,
+            dampening=0.9,
+            weight_decay=0.001,
+        )
 
         loss_function = nn.CrossEntropyLoss()
         loss_function = loss_function.cuda()
@@ -154,7 +175,9 @@ class MetaTemplate(nn.Module):
             rand_id = np.random.permutation(support_size)
             for i in range(0, support_size, batch_size):
                 set_optimizer.zero_grad()
-                selected_id = torch.from_numpy(rand_id[i: min(i + batch_size, support_size)]).cuda()
+                selected_id = torch.from_numpy(
+                    rand_id[i : min(i + batch_size, support_size)]
+                ).cuda()
                 z_batch = z_support[selected_id]
                 y_batch = y_support[selected_id]
                 scores = linear_clf(z_batch)

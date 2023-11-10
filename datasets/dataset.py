@@ -10,8 +10,8 @@ from torchvision.datasets.utils import download_and_extract_archive
 # Inspired/modified from WILDS (https://wilds.stanford.edu/)
 # and COMET (https://github.com/snap-stanford/comet)
 
-class FewShotDataset(Dataset):
 
+class FewShotDataset(Dataset):
     def __init__(self):
         self.check_init()
 
@@ -19,15 +19,15 @@ class FewShotDataset(Dataset):
         """
         Convenience function to check that the FewShotDataset is properly configured.
         """
-        required_attrs = ['_dataset_name', '_data_dir']
+        required_attrs = ["_dataset_name", "_data_dir"]
         for attr in required_attrs:
             if not hasattr(self, attr):
-                raise ValueError(f'FewShotDataset must have attribute {attr}.')
+                raise ValueError(f"FewShotDataset must have attribute {attr}.")
 
         if not os.path.exists(self._data_dir):
             raise ValueError(
-                f'{self._data_dir} does not exist yet. Please generate/download the dataset first.')
-
+                f"{self._data_dir} does not exist yet. Please generate/download the dataset first."
+            )
 
     @abstractmethod
     def __getitem__(self, i):
@@ -43,7 +43,7 @@ class FewShotDataset(Dataset):
         return NotImplemented
 
     @abstractmethod
-    def get_data_loader(self, mode='train') -> DataLoader:
+    def get_data_loader(self, mode="train") -> DataLoader:
         return NotImplemented
 
     @property
@@ -63,31 +63,38 @@ class FewShotDataset(Dataset):
         if not self.dataset_exists_locally():
             if not download_flag:
                 raise FileNotFoundError(
-                    f'The {self._dataset_name} dataset could not be found in {self._data_dir}. Please'
-                    f' download manually. '
+                    f"The {self._dataset_name} dataset could not be found in {self._data_dir}. Please"
+                    f" download manually. "
                 )
 
             self.download_dataset(download_flag)
 
     def download_dataset(self, download_flag):
         if self._dataset_url is None:
-            raise ValueError(f'{self._dataset_name} cannot be automatically downloaded. Please download it manually.')
+            raise ValueError(
+                f"{self._dataset_name} cannot be automatically downloaded. Please download it manually."
+            )
 
-        print(f'Downloading dataset to {self._data_dir}...')
+        print(f"Downloading dataset to {self._data_dir}...")
 
         try:
             start_time = time.time()
             download_and_extract_archive(
                 url=self._dataset_url,
                 download_root=self._data_dir,
-                remove_finished=True)
+                remove_finished=True,
+            )
             download_time_in_minutes = (time.time() - start_time) / 60
-            print(f"\nIt took {round(download_time_in_minutes, 2)} minutes to download and uncompress the dataset.\n")
+            print(
+                f"\nIt took {round(download_time_in_minutes, 2)} minutes to download and uncompress the dataset.\n"
+            )
         except Exception as e:
             print(f"Exception: ", e)
 
     def dataset_exists_locally(self):
-        return os.path.exists(self._data_dir) and (len(os.listdir(self._data_dir)) > 0 or (self._dataset_url is None))
+        return os.path.exists(self._data_dir) and (
+            len(os.listdir(self._data_dir)) > 0 or (self._dataset_url is None)
+        )
 
 
 class FewShotSubDataset(Dataset):
@@ -117,4 +124,4 @@ class EpisodicBatchSampler(object):
 
     def __iter__(self):
         for i in range(self.n_episodes):
-            yield torch.randperm(self.n_classes)[:self.n_way]
+            yield torch.randperm(self.n_classes)[: self.n_way]

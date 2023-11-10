@@ -49,15 +49,17 @@ class ConvNet(nn.Module):
 
 
 class ConvNetNopool(
-    nn.Module):  # Relation net use a 4 layer conv with pooling in only first two layers, else no pooling
+    nn.Module
+):  # Relation net use a 4 layer conv with pooling in only first two layers, else no pooling
     def __init__(self, depth):
         super(ConvNetNopool, self).__init__()
         trunk = []
         for i in range(depth):
             indim = 3 if i == 0 else 64
             outdim = 64
-            B = ConvBlock(indim, outdim, pool=(i in [0, 1]),
-                          padding=0 if i in [0, 1] else 1)  # only first two layer has pooling and no padding
+            B = ConvBlock(
+                indim, outdim, pool=(i in [0, 1]), padding=0 if i in [0, 1] else 1
+            )  # only first two layer has pooling and no padding
             trunk.append(B)
 
         self.trunk = nn.Sequential(*trunk)
@@ -91,15 +93,17 @@ class ConvNetS(nn.Module):  # For omniglot, only 1 input channel, output dim is 
 
 
 class ConvNetSNopool(
-    nn.Module):  # Relation net use a 4 layer conv with pooling in only first two layers, else no pooling. For omniglot, only 1 input channel, output dim is [64,5,5]
+    nn.Module
+):  # Relation net use a 4 layer conv with pooling in only first two layers, else no pooling. For omniglot, only 1 input channel, output dim is [64,5,5]
     def __init__(self, depth):
         super(ConvNetSNopool, self).__init__()
         trunk = []
         for i in range(depth):
             indim = 1 if i == 0 else 64
             outdim = 64
-            B = ConvBlock(indim, outdim, pool=(i in [0, 1]),
-                          padding=0 if i in [0, 1] else 1)  # only first two layer has pooling and no padding
+            B = ConvBlock(
+                indim, outdim, pool=(i in [0, 1]), padding=0 if i in [0, 1] else 1
+            )  # only first two layer has pooling and no padding
             trunk.append(B)
 
         self.trunk = nn.Sequential(*trunk)

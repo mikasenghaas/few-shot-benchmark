@@ -4,17 +4,20 @@ import scanpy as sc
 from anndata import read_h5ad
 
 
-class MacaData():
-    def __init__(self, annotation_type='cell_ontology_class_reannotated',
-                 src_file='dataset/cell_data/tabula-muris-senis-facs-official-annotations.h5ad', filter_genes=True):
-
+class MacaData:
+    def __init__(
+        self,
+        annotation_type="cell_ontology_class_reannotated",
+        src_file="dataset/cell_data/tabula-muris-senis-facs-official-annotations.h5ad",
+        filter_genes=True,
+    ):
         """
         annotation type: cell_ontology_class, cell_ontology id or free_annotation
         """
         self.adata = read_h5ad(src_file)
         self.adata.obs[annotation_type] = self.adata.obs[annotation_type].astype(str)
-        self.adata = self.adata[self.adata.obs[annotation_type] != 'nan', :]
-        self.adata = self.adata[self.adata.obs[annotation_type] != 'NA', :]
+        self.adata = self.adata[self.adata.obs[annotation_type] != "nan", :]
+        self.adata = self.adata[self.adata.obs[annotation_type] != "NA", :]
 
         # print(Counter(self.adata.obs.loc[self.adata.obs['age']=='18m', 'free_annotation']))
 
@@ -29,11 +32,22 @@ class MacaData():
         sc.pp.filter_cells(adata, min_counts=5000)
         sc.pp.filter_cells(adata, min_genes=500)
 
-        sc.pp.normalize_per_cell(adata, counts_per_cell_after=1e4)  # simple lib size normalization?
+        sc.pp.normalize_per_cell(
+            adata, counts_per_cell_after=1e4
+        )  # simple lib size normalization?
         adata.raw = adata
-        adata = sc.pp.filter_genes_dispersion(adata, subset=False, min_disp=.5, max_disp=None,
-                                              min_mean=.0125, max_mean=10, n_bins=20, n_top_genes=None,
-                                              log=True, copy=True)
+        adata = sc.pp.filter_genes_dispersion(
+            adata,
+            subset=False,
+            min_disp=0.5,
+            max_disp=None,
+            min_mean=0.0125,
+            max_mean=10,
+            n_bins=20,
+            n_top_genes=None,
+            log=True,
+            copy=True,
+        )
         adata = adata[:, adata.var.highly_variable]
         sc.pp.log1p(adata)
         sc.pp.scale(adata, max_value=10, zero_center=True)
@@ -48,10 +62,10 @@ class MacaData():
         age: '3m','18m', '24m', if None all ages are included
         """
 
-        tiss = self.adata[self.adata.obs['tissue'] == tissue, :]
+        tiss = self.adata[self.adata.obs["tissue"] == tissue, :]
 
         if age:
-            return tiss[tiss.obs['age'] == age]
+            return tiss[tiss.obs["age"] == age]
 
         return tiss
 
@@ -63,7 +77,7 @@ class MacaData():
         mapping = {a: idx for idx, a in enumerate(annotations_set)}
 
         truth_labels = [mapping[a] for a in annotations]
-        self.adata.obs['label'] = pd.Categorical(values=truth_labels)
+        self.adata.obs["label"] = pd.Categorical(values=truth_labels)
         # 18m-unannotated
         #
         return mapping

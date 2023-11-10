@@ -23,3 +23,6 @@ dataclasses-json
 dataclasses
 torch_geometric
 biopython
+# Dev dependencies
+black
+ruff
