@@ -23,6 +23,8 @@ class MatchingNet(MetaTemplate):
         self.relu = nn.ReLU()
         self.softmax = nn.Softmax()
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     def encode_training_set(self, S, G_encoder=None):
         if G_encoder is None:
             G_encoder = self.G_encoder
@@ -55,22 +57,22 @@ class MatchingNet(MetaTemplate):
         G, G_normalized = self.encode_training_set(z_support)
 
         y_s = torch.from_numpy(np.repeat(range(self.n_way), self.n_support))
-        Y_S = Variable(one_hot(y_s, self.n_way)).cuda()
+        Y_S = Variable(one_hot(y_s, self.n_way)).to(self.device)
         f = z_query
         logprobs = self.get_logprobs(f, G, G_normalized, Y_S)
         return logprobs
 
     def set_forward_loss(self, x):
         y_query = torch.from_numpy(np.repeat(range(self.n_way), self.n_query))
-        y_query = Variable(y_query.cuda())
+        y_query = Variable(y_query.to(self.device))
 
         logprobs = self.set_forward(x)
 
         return self.loss_fn(logprobs, y_query)
 
     def cuda(self):
-        super(MatchingNet, self).cuda()
-        self.FCE = self.FCE.cuda()
+        super(MatchingNet, self).to(self.device)
+        self.FCE = self.FCE.to(self.device)
         return self
 
 
@@ -82,6 +84,8 @@ class FullyContextualEmbedding(nn.Module):
         self.c_0 = Variable(torch.zeros(1, feat_dim))
         self.feat_dim = feat_dim
         # self.K = K
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def forward(self, f, G):
         h = f
@@ -100,6 +104,6 @@ class FullyContextualEmbedding(nn.Module):
         return h
 
     def cuda(self):
-        super(FullyContextualEmbedding, self).cuda()
-        self.c_0 = self.c_0.cuda()
+        super(FullyContextualEmbedding, self).to(self.device)
+        self.c_0 = self.c_0.to(self.device)
         return self

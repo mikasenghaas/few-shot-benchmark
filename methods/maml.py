@@ -37,6 +37,8 @@ class MAML(MetaTemplate):
         self.inner_lr = inner_lr
         self.approx = approx  # first order approx.
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     def forward(self, x):
         out = self.feature.forward(x)
         scores = self.classifier.forward(out)
@@ -50,7 +52,7 @@ class MAML(MetaTemplate):
     def set_forward(self, x, y=None):
         if isinstance(x, list):  # If there are >1 inputs to model (e.g. GeneBac)
             if torch.cuda.is_available():
-                x = [obj.cuda() for obj in x]
+                x = [obj.to(self.device) for obj in x]
             x_var = [Variable(obj) for obj in x]
             x_a_i = [
                 x_var[i][:, : self.n_support, :]
@@ -66,8 +68,7 @@ class MAML(MetaTemplate):
             ]  # query data
 
         else:
-            if torch.cuda.is_available():
-                x = x.cuda()
+            x = x.to(self.device)
             x_var = Variable(x)
             x_a_i = (
                 x_var[:, : self.n_support, :]
@@ -94,7 +95,7 @@ class MAML(MetaTemplate):
                 .view(self.n_way * self.n_support, *y.size()[2:])
             )  # label for support data
         if torch.cuda.is_available():
-            y_a_i = y_a_i.cuda()
+            y_a_i = y_a_i.to(self.device)
 
         fast_parameters = list(
             self.parameters()
@@ -150,7 +151,7 @@ class MAML(MetaTemplate):
             )
 
         if torch.cuda.is_available():
-            y_b_i = y_b_i.cuda()
+            y_b_i = y_b_i.to(self.device)
 
         loss = self.loss_fn(scores, y_b_i)
 

@@ -1,5 +1,6 @@
 import hydra
 import wandb
+import torch
 from hydra.utils import instantiate
 from math import ceil
 from omegaconf import OmegaConf
@@ -14,7 +15,7 @@ from utils.io_utils import (
     opt_to_dict,
     get_model_file,
 )
-
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def initialize_dataset_model(cfg):
     # Instantiate train dataset as specified in dataset config under simple_cls or set_cls
@@ -38,6 +39,7 @@ def initialize_dataset_model(cfg):
         val_dataset = instantiate(cfg.dataset.set_cls, mode="val")
     val_loader = val_dataset.get_data_loader()
 
+    print(cfg.backbone)
     # For MAML (and other optimization-based methods), need to instantiate backbone layers with fast weight
     if cfg.method.fast_weight:
         backbone = instantiate(cfg.backbone, x_dim=train_dataset.dim, fast_weight=True)
@@ -47,8 +49,7 @@ def initialize_dataset_model(cfg):
     # Instantiate few-shot method class
     model = instantiate(cfg.method.cls, backbone=backbone)
 
-    if torch.cuda.is_available():
-        model = model.cuda()
+    model = model.to(device)
 
     if cfg.method.name == "maml":
         cfg.method.stop_epoch *= model.n_task  # maml use multiple tasks in one update

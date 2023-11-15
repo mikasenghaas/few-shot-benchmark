@@ -6,10 +6,10 @@ import torch
 from matplotlib import pyplot as plt
 from torch.autograd import Variable
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def one_hot(y, num_class):
-    return torch.zeros((len(y), num_class)).scatter_(1, y.unsqueeze(1), 1)
-
+    return torch.zeros((len(y), num_class), device=device).scatter_(1, y.unsqueeze(1), 1)
 
 class SimpleHDF5Dataset:
     def __init__(self, file_handle=None):
@@ -89,7 +89,7 @@ def save_features(model, data_loader, outfile):
     for i, (x, y) in enumerate(data_loader):
         if i % 10 == 0:
             print("{:d}/{:d}".format(i, len(data_loader)))
-        x = x.cuda()
+        x = x.to(device)
         x_var = Variable(x)
         feats = model(x_var)
         if all_feats is None:

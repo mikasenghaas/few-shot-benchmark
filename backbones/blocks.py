@@ -145,6 +145,8 @@ class Conv2d_fw(nn.Conv2d):  # used in MAML to forward input with fast weight
         if not self.bias is None:
             self.bias.fast = None
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     def forward(self, x):
         if self.bias is None:
             if self.weight.fast is not None:
@@ -175,8 +177,8 @@ class BatchNorm2d_fw(nn.BatchNorm2d):  # used in MAML to forward input with fast
         self.bias.fast = None
 
     def forward(self, x):
-        running_mean = torch.zeros(x.data.size()[1]).cuda()
-        running_var = torch.ones(x.data.size()[1]).cuda()
+        running_mean = torch.zeros(x.data.size()[1]).to(self.device)
+        running_var = torch.ones(x.data.size()[1]).to(self.device)
         if self.weight.fast is not None and self.bias.fast is not None:
             out = F.batch_norm(
                 x,
@@ -207,9 +209,11 @@ class BatchNorm1d_fw(nn.BatchNorm1d):  # used in MAML to forward input with fast
         self.weight.fast = None
         self.bias.fast = None
 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     def forward(self, x):
-        running_mean = torch.zeros(x.data.size()[1]).cuda()
-        running_var = torch.ones(x.data.size()[1]).cuda()
+        running_mean = torch.zeros(x.data.size()[1]).to(self.device)
+        running_var = torch.ones(x.data.size()[1]).to(self.device)
         if self.weight.fast is not None and self.bias.fast is not None:
             out = F.batch_norm(
                 x,

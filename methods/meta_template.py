@@ -19,10 +19,7 @@ class MetaTemplate(nn.Module):
         self.feat_dim = self.feature.final_feat_dim
         self.change_way = change_way  # some methods allow different_way classification during training and test
 
-        if torch.cuda.is_available():
-            self.device = torch.device("cuda")
-        else:
-            self.device = torch.device("cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     @abstractmethod
     def set_forward(self, x, is_feature=False):
@@ -153,10 +150,10 @@ class MetaTemplate(nn.Module):
         z_query = z_query.contiguous().view(self.n_way * self.n_query, -1)
 
         y_support = torch.from_numpy(np.repeat(range(self.n_way), self.n_support))
-        y_support = Variable(y_support.cuda())
+        y_support = Variable(y_support.to(self.device))
 
         linear_clf = nn.Linear(self.feat_dim, self.n_way)
-        linear_clf = linear_clf.cuda()
+        linear_clf = linear_clf.to(self.device)
 
         set_optimizer = torch.optim.SGD(
             linear_clf.parameters(),
@@ -167,7 +164,7 @@ class MetaTemplate(nn.Module):
         )
 
         loss_function = nn.CrossEntropyLoss()
-        loss_function = loss_function.cuda()
+        loss_function = loss_function.to(self.device)
 
         batch_size = 4
         support_size = self.n_way * self.n_support
@@ -177,7 +174,7 @@ class MetaTemplate(nn.Module):
                 set_optimizer.zero_grad()
                 selected_id = torch.from_numpy(
                     rand_id[i : min(i + batch_size, support_size)]
-                ).cuda()
+                ).to(self.device)
                 z_batch = z_support[selected_id]
                 y_batch = y_support[selected_id]
                 scores = linear_clf(z_batch)
