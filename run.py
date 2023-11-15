@@ -1,6 +1,8 @@
 import hydra
 import wandb
 import torch
+import os
+import time
 from hydra.utils import instantiate
 from math import ceil
 from omegaconf import OmegaConf
@@ -39,7 +41,7 @@ def initialize_dataset_model(cfg):
         val_dataset = instantiate(cfg.dataset.set_cls, mode="val")
     val_loader = val_dataset.get_data_loader()
 
-    print(cfg.backbone)
+    print(cfg.backbone) # TODO figure out how to change this without introducing errors in the code bellow
     # For MAML (and other optimization-based methods), need to instantiate backbone layers with fast weight
     if cfg.method.fast_weight:
         backbone = instantiate(cfg.backbone, x_dim=train_dataset.dim, fast_weight=True)
@@ -102,9 +104,19 @@ def train(train_loader, val_loader, model, cfg):
 
     if not os.path.isdir(cp_dir):
         os.makedirs(cp_dir)
+
+    name = f"%s-%s-%s %sshot %sway" % (
+        cfg.dataset.name,
+        cfg.model, # see main.yaml, this setting doesn't change the model, TODO figure out how to change it (changing dataset.backbone._target_ introduces errors)
+        cfg.method.name,
+        cfg.n_shot,
+        cfg.n_way,
+    )
+
     wandb.init(
         project=cfg.wandb.project,
         entity=cfg.wandb.entity,
+        name=name,
         config=OmegaConf.to_container(cfg, resolve=True),
         group=cfg.exp.name,
         settings=wandb.Settings(start_method="thread"),
