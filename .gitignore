@@ -1,5 +1,9 @@
 # Custom
 .python-version
+/data
+/outputs
+/wandb
+/checkpoints
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
