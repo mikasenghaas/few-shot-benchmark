@@ -1,17 +1,43 @@
+import os
 from abc import ABC
 
 import numpy as np
+import torch
 from torch.utils.data import DataLoader
 
-from datasets.cell.utils import MacaData
-from datasets.dataset import *
+from datasets.cell.utils import MacaData, MacaDataImproved
+from datasets.dataset import FewShotDataset, FewShotSubDataset
 
 
 class TMDataset(FewShotDataset, ABC):
+    """
+    Abstract base class for the Tabula Muris dataset.
+
+    Sets the class attributes (dataset name and URL) and implements a utility
+    method to load the entire dataset.
+    """
+
     _dataset_name = "tabula_muris"
     _dataset_url = "http://snap.stanford.edu/comet/data/tabula-muris-comet.zip"
 
     def load_tabular_muris(self, mode="train", min_samples=20):
+        """
+        Loads the Tabula Muris dataset from the data directory. Depending on the
+        mode (train, val, test), we only return the samples and targets in the
+        specified tissues (e.g. BAT for train, Skin for val, etc.)
+
+        The min_samples parameter filters out all classes with less than the
+        specified number. This is necessary to not include tissues with less
+        samples than needed for a k-shot learning task.
+
+        Args:
+            mode (str): train, val, or test
+            min_samples (int): minimum number of samples per class
+
+        Returns:
+            samples (np.ndarray): samples in the dataset
+            targets (np.ndarray): labels for the samples
+        """
         train_tissues = [
             "BAT",
             "Bladder",
@@ -55,7 +81,63 @@ class TMDataset(FewShotDataset, ABC):
         return samples, targets
 
 
-class TMSimpleDataset(TMDataset):
+class TMDatasetImproved(FewShotDataset, ABC):
+    """
+    An improved version of the TMDataset base class that uses
+    the MacaDataImproved class to load the data. The class only loads and
+    pre-processes the data within the split (train, val, test) which significantly
+    improves the loading time. Additionally, it introduces the subset parameter
+    which allows to only 10% of the data for faster prototyping.
+
+    Sets the class attributes (dataset name and URL) and implements a utility
+    method to load the entire dataset.
+    """
+
+    _dataset_name = "tabula_muris"
+    _dataset_url = "http://snap.stanford.edu/comet/data/tabula-muris-comet.zip"
+
+    def load_tabular_muris(self, mode="train", min_samples=20, subset=False):
+        """
+        Loads the Tabula Muris dataset from the data directory. Depending on the
+        mode (train, val, test), we only return the samples and targets in the
+        specified tissues (e.g. BAT for train, Skin for val, etc.)
+
+        The min_samples parameter filters out all classes with less than the
+        specified number. This is necessary to not include tissues with less
+        samples than needed for a k-shot learning task.
+
+        Allows to only load a subset of the data (10%) for faster prototyping.
+
+        Args:
+            mode (str): train, val, or test
+            min_samples (int): minimum number of samples per class
+            subset (bool): whether to subset the data
+
+        Returns:
+            samples (np.ndarray): samples in the dataset
+            targets (np.ndarray): labels for the samples
+        """
+
+        # Load all the data in the split
+        path = os.path.join(self._data_dir, "tabula-muris-comet.h5ad")
+        adata = MacaDataImproved(src_file=path, mode=mode, subset=subset).adata
+
+        # Filter out classes with less than min_samples (typically set to k-shot)
+        filtered_index = (
+            adata.obs.groupby(["label"])
+            .filter(lambda group: len(group) >= min_samples)
+            .reset_index()["index"]
+        )
+        adata = adata[filtered_index]
+
+        # Convert features and targets to numpy arrays
+        samples = adata.X
+        targets = adata.obs["label"].cat.codes.to_numpy(dtype=np.int32)
+
+        return samples, targets
+
+
+class TMSimpleDataset(TMDatasetImproved):
     def __init__(self, batch_size, root="./data/", mode="train", min_samples=20):
         self.initialize_data_dir(root, download_flag=True)
         self.samples, self.targets = self.load_tabular_muris(mode, min_samples)
@@ -81,7 +163,7 @@ class TMSimpleDataset(TMDataset):
         return data_loader
 
 
-class TMSetDataset(TMDataset):
+class TMSetDataset(TMDatasetImproved):
     def __init__(
         self, n_way, n_support, n_query, n_episode=100, root="./data", mode="train"
     ):
