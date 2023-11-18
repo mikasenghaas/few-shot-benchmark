@@ -89,7 +89,7 @@ class FewShotDataset(Dataset):
                 f"\nIt took {round(download_time_in_minutes, 2)} minutes to download and uncompress the dataset.\n"
             )
         except Exception as e:
-            print(f"Exception: ", e)
+            print("Exception: ", e)
 
     def dataset_exists_locally(self):
         return os.path.exists(self._data_dir) and (
