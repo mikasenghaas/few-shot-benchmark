@@ -5,36 +5,75 @@ from anndata import read_h5ad
 
 
 class MacaData:
+    """
+    Utility class to load and preprocess the Tabula Muris dataset.
+    """
+
     def __init__(
         self,
-        annotation_type="cell_ontology_class_reannotated",
-        src_file="dataset/cell_data/tabula-muris-senis-facs-official-annotations.h5ad",
+        src_file,
         filter_genes=True,
     ):
         """
-        annotation type: cell_ontology_class, cell_ontology id or free_annotation
+        Loads the Tabula Muris dataset from the data directory specified in src_file
+        using the `anndata` library and preprocesses the data using `scanpy`.
+
+        Args:
+            src_file (str): path to the .h5ad file containing the dataset
+            filter_genes (bool): whether to filter out genes with low expression
+
+        Returns:
+            None
         """
-        self.adata = read_h5ad(src_file)
-        self.adata.obs[annotation_type] = self.adata.obs[annotation_type].astype(str)
-        self.adata = self.adata[self.adata.obs[annotation_type] != "nan", :]
-        self.adata = self.adata[self.adata.obs[annotation_type] != "NA", :]
+        # Loads entire dataset
+        self.adata = read_h5ad(src_file).copy()
+        self.annotation_type = "cell_ontology_class_reannotated"
 
-        # print(Counter(self.adata.obs.loc[self.adata.obs['age']=='18m', 'free_annotation']))
+        # Convert annotation column to string
 
-        self.cells2names = self.cellannotation2ID(annotation_type)
+        # Create copy to avoid implicit modification warnings
+        self.adata.obs[self.annotation_type] = self.adata.obs[
+            self.annotation_type
+        ].astype(str)
 
+        # Filter out cells with no annotation
+        self.adata = self.adata[
+            ~self.adata.obs[self.annotation_type].isin(["nan", "NA"]), :
+        ].copy()
+
+        # Add ground truth labels
+        self.cells2names = self.cellannotation2ID(self.annotation_type)
+
+        # Filter out genes with less than min_cells having non-zero expression
         if filter_genes:
             sc.pp.filter_genes(self.adata, min_cells=5)
 
+        # Preprocess data (filter cells, normalize, log, scale)
         self.adata = self.preprocess_data(self.adata)
 
     def preprocess_data(self, adata):
+        """
+        Preprocesses the data using scanpy. It performs the following steps:
+            - Filter out cells with less than 5000 counts and 500 genes expressed
+            - Normalize per cell (simple lib size normalization)
+            - Filter out genes with low dispersion (retain the once with high variance)
+            - Log transform and scale the data
+            - Zero-imputation of Nans
+
+        Args:
+            adata (anndata.AnnData): the dataset to preprocess
+
+        Returns:
+            adata (anndata.AnnData): the preprocessed dataset
+        """
+        # Filter out cells with less than 5000 counts and 500 genes expressed
         sc.pp.filter_cells(adata, min_counts=5000)
         sc.pp.filter_cells(adata, min_genes=500)
 
-        sc.pp.normalize_per_cell(
-            adata, counts_per_cell_after=1e4
-        )  # simple lib size normalization?
+        # Normalize per cell (lib size normalization)
+        sc.pp.normalize_per_cell(adata, counts_per_cell_after=1e4)
+
+        # Filter out genes with low dispersion
         adata.raw = adata
         adata = sc.pp.filter_genes_dispersion(
             adata,
@@ -48,16 +87,22 @@ class MacaData:
             log=True,
             copy=True,
         )
-        adata = adata[:, adata.var.highly_variable]
+        adata = adata[:, adata.var.highly_variable].copy()
+
+        # Log-transform the data
         sc.pp.log1p(adata)
+
+        # Scale the data
         sc.pp.scale(adata, max_value=10, zero_center=True)
+
+        # Zero-imputation of Nans
         adata.X[np.isnan(adata.X)] = 0
-        # sc.tl.pca(self.adata)
 
         return adata
 
     def get_tissue_data(self, tissue, age=None):
-        """Select data for given tissue.
+        """
+        Select data for given tissue.
         filtered: if annotated return only cells with annotations, if unannotated return only cells without labels, else all
         age: '3m','18m', '24m', if None all ages are included
         """
@@ -81,3 +126,87 @@ class MacaData:
         # 18m-unannotated
         #
         return mapping
+
+
+class MacaDataImproved(MacaData):
+    """
+    Improved MacaData class that allows to load only tissue data for a
+    given split and subset the data to 10% of the original size. Inherits
+    from the MacaData class to use the same pre-processing and annotation
+    mappings but overrides the constructor.
+    """
+
+    _train_tissues = [
+        "BAT",
+        "Bladder",
+        "Brain_Myeloid",
+        "Brain_Non-Myeloid",
+        "Diaphragm",
+        "GAT",
+        "Heart",
+        "Kidney",
+        "Limb_Muscle",
+        "Liver",
+        "MAT",
+        "Mammary_Gland",
+        "SCAT",
+        "Spleen",
+        "Trachea",
+    ]
+    _val_tissues = ["Skin", "Lung", "Thymus", "Aorta"]
+    _test_tissues = ["Large_Intestine", "Marrow", "Pancreas", "Tongue"]
+
+    def __init__(
+        self,
+        annotation_type="cell_ontology_class_reannotated",
+        src_file="dataset/cell_data/tabula-muris-senis-facs-official-annotations.h5ad",
+        filter_genes=True,
+        subset=False,
+        mode="train",
+    ):
+        """
+        Loads the Tabula Muris dataset from the data directory specified in src_file
+        using the `anndata` library and preprocesses the data using `scanpy`.
+
+        Args:
+            src_file (str): path to the .h5ad file containing the dataset
+            filter_genes (bool): whether to filter out genes with low expression
+
+        Returns:
+            None
+        """
+        # Load all data and change the type of the annotation column to string
+        self.adata = read_h5ad(src_file)
+        self.adata.obs[annotation_type] = self.adata.obs[annotation_type].astype(str)
+
+        # Load annotations to ID mapping
+        self.cells2names = self.cellannotation2ID(annotation_type)
+
+        # Filter our cells with no annotation
+        self.adata = self.adata[self.adata.obs[annotation_type] != "nan", :]
+        self.adata = self.adata[self.adata.obs[annotation_type] != "NA", :]
+
+        # Subset data to only include cells with annotation
+        mode2tissues = {
+            "train": self._train_tissues,
+            "val": self._val_tissues,
+            "test": self._test_tissues,
+        }
+        self.adata = self.adata[
+            self.adata.obs["tissue"].isin(mode2tissues[mode])
+        ].copy()
+
+        # Subset the loaded data
+        if subset:
+            subset_size = len(self.adata) // 10
+            random_indices = np.random.choice(
+                self.adata.shape[0], size=subset_size, replace=False
+            )
+            self.adata = self.adata[random_indices, :].copy()
+
+        # Filter out genes with less than min_cells having non-zero expression
+        if filter_genes:
+            sc.pp.filter_genes(self.adata, min_cells=5)
+
+        # Preprocess data (filter cells, normalize, log, scal)
+        self.adata = self.preprocess_data(self.adata)
