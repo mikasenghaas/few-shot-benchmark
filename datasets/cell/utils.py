@@ -1,3 +1,5 @@
+import os
+import json
 import numpy as np
 import pandas as pd
 import scanpy as sc
@@ -6,54 +8,46 @@ from anndata import read_h5ad
 
 class MacaData:
     """
-    Utility class to load and preprocess the Tabula Muris dataset.
+    Utility class to load and preprocess Tabula Muris dataset.
     """
 
-    def __init__(
-        self,
-        src_file,
-        filter_genes=True,
-    ):
+    def __init__(self, path: str):
         """
-        Loads the Tabula Muris dataset from the data directory specified in src_file
-        using the `anndata` library and preprocesses the data using `scanpy`.
+        Loads and preprocesses the Tabula Muris dataset from the the src_file
+        path using `anndata` library and preprocesses the data using `scanpy`.
 
         Args:
-            src_file (str): path to the .h5ad file containing the dataset
-            filter_genes (bool): whether to filter out genes with low expression
+            path (str): path to the .h5ad file containing the dataset
 
         Returns:
             None
         """
-        # Loads entire dataset
-        self.adata = read_h5ad(src_file).copy()
-        self.annotation_type = "cell_ontology_class_reannotated"
+        # Load original data
+        self.adata = read_h5ad(path).copy()
 
-        # Convert annotation column to string
+        # Define target (cell type)
+        self.target = "cell_ontology_class_reannotated"
 
-        # Create copy to avoid implicit modification warnings
-        self.adata.obs[self.annotation_type] = self.adata.obs[
-            self.annotation_type
-        ].astype(str)
+        # Compute ground truth mapping and add encoded targets to the dataset
+        targets = list(self.adata.obs[self.target])
+        unique_targets = sorted(set(targets))
 
-        # Filter out cells with no annotation
-        self.adata = self.adata[
-            ~self.adata.obs[self.annotation_type].isin(["nan", "NA"]), :
-        ].copy()
+        self.trg2idx = {trg: idx for idx, trg in enumerate(unique_targets)}
+        self.idx2trg = {idx: trg for idx, trg in enumerate(unique_targets)}
 
-        # Add ground truth labels
-        self.cells2names = self.cellannotation2ID(self.annotation_type)
+        # Add ground truth labels to the dataset
+        targets = list(self.adata.obs[self.target])
+        target_idxs = [self.trg2idx[target] for target in targets]
+        self.adata.obs["label"] = pd.Categorical(values=target_idxs)
 
-        # Filter out genes with less than min_cells having non-zero expression
-        if filter_genes:
-            sc.pp.filter_genes(self.adata, min_cells=5)
+        # Set processed flag to False
+        self.processed = False
 
-        # Preprocess data (filter cells, normalize, log, scale)
-        self.adata = self.preprocess_data(self.adata)
-
-    def preprocess_data(self, adata):
+    def process_data(self):
         """
-        Preprocesses the data using scanpy. It performs the following steps:
+        Processes the data using scanpy. It performs the following steps:
+            - Filter out cells with no target
+            - Filter out genes that are expressed in less than 5 cells
             - Filter out cells with less than 5000 counts and 500 genes expressed
             - Normalize per cell (simple lib size normalization)
             - Filter out genes with low dispersion (retain the once with high variance)
@@ -61,11 +55,21 @@ class MacaData:
             - Zero-imputation of Nans
 
         Args:
-            adata (anndata.AnnData): the dataset to preprocess
+            None
 
         Returns:
-            adata (anndata.AnnData): the preprocessed dataset
+            None
         """
+        adata = self.adata.copy()
+
+        # Filter out cells with no target
+        adata.obs[self.target] = adata.obs[self.target].astype(str)
+        missing_target = adata.obs[self.target].isin(["nan", "NA"])
+        adata = adata[~missing_target, :].copy()
+
+        # Filter out genes with less than min_cells having non-zero expression
+        sc.pp.filter_genes(adata, min_cells=5)
+
         # Filter out cells with less than 5000 counts and 500 genes expressed
         sc.pp.filter_cells(adata, min_counts=5000)
         sc.pp.filter_cells(adata, min_genes=500)
@@ -98,42 +102,35 @@ class MacaData:
         # Zero-imputation of Nans
         adata.X[np.isnan(adata.X)] = 0
 
-        return adata
+        self.processed = True
+        self.adata = adata
 
-    def get_tissue_data(self, tissue, age=None):
+    def save_processed_data(self, dir: str):
         """
-        Select data for given tissue.
-        filtered: if annotated return only cells with annotations, if unannotated return only cells without labels, else all
-        age: '3m','18m', '24m', if None all ages are included
+        Saves the processed data to the specified path. Raises an error if the
+        data has not been processed yet.
+
+        Args:
+            dir (str): path to the directory where to save the data
+
+        Returns:
+            None
         """
-
-        tiss = self.adata[self.adata.obs["tissue"] == tissue, :]
-
-        if age:
-            return tiss[tiss.obs["age"] == age]
-
-        return tiss
-
-    def cellannotation2ID(self, annotation_type):
-        """Adds ground truth clusters data."""
-        annotations = list(self.adata.obs[annotation_type])
-        annotations_set = sorted(set(annotations))
-
-        mapping = {a: idx for idx, a in enumerate(annotations_set)}
-
-        truth_labels = [mapping[a] for a in annotations]
-        self.adata.obs["label"] = pd.Categorical(values=truth_labels)
-        # 18m-unannotated
-        #
-        return mapping
+        os.makedirs(dir, exist_ok=True)
+        dst_file = os.path.join(dir, "tabula-muris-comet.h5ad")
+        dst_mapping = os.path.join(dir, "trg2idx.json")
+        if self.processed:
+            self.adata.write_h5ad(dst_file)
+            with open(dst_mapping, "w") as f:
+                json.dump(self.trg2idx, f)
+        else:
+            raise ValueError("Data has not been processed yet.")
 
 
-class MacaDataImproved(MacaData):
+class MacaDataLoader:
     """
-    Improved MacaData class that allows to load only tissue data for a
-    given split and subset the data to 10% of the original size. Inherits
-    from the MacaData class to use the same pre-processing and annotation
-    mappings but overrides the constructor.
+    Wrapper around the MacaData class that allows to load only tissue data for a
+    specific mode (train, val, test) and subset the data to a fraction of the original size.
     """
 
     _train_tissues = [
@@ -156,57 +153,84 @@ class MacaDataImproved(MacaData):
     _val_tissues = ["Skin", "Lung", "Thymus", "Aorta"]
     _test_tissues = ["Large_Intestine", "Marrow", "Pancreas", "Tongue"]
 
+    # Subset data to only include cells with annotation
+    _mode2tissues = {
+        "train": _train_tissues,
+        "val": _val_tissues,
+        "test": _test_tissues,
+    }
+
     def __init__(
         self,
-        annotation_type="cell_ontology_class_reannotated",
-        src_file="dataset/cell_data/tabula-muris-senis-facs-official-annotations.h5ad",
-        filter_genes=True,
-        subset=False,
-        mode="train",
+        path: str,
+        mode: str = "train",
+        subset: bool = False,
+        seed: int = 42,
     ):
         """
         Loads the Tabula Muris dataset from the data directory specified in src_file
         using the `anndata` library and preprocesses the data using `scanpy`.
 
         Args:
-            src_file (str): path to the .h5ad file containing the dataset
-            filter_genes (bool): whether to filter out genes with low expression
+            path (str): path to the original .h5ad data
+            annotation_type (str): the type of annotation to use as ground truth
+            mode (str): train, val, or test
+            subset (bool): whether to subset the data to 10% of the original size
+            seed (int): seed for the random number generator
 
         Returns:
             None
         """
-        # Load all data and change the type of the annotation column to string
-        self.adata = read_h5ad(src_file)
-        self.adata.obs[annotation_type] = self.adata.obs[annotation_type].astype(str)
+        # Get relevant paths to processed data
+        path_dir = os.path.join(os.path.dirname(path), "processed")
+        processed_path = os.path.join(path_dir, "tabula-muris-comet.h5ad")
+        processed_mappings = os.path.join(path_dir, "trg2idx.json")
 
-        # Load annotations to ID mapping
-        self.cells2names = self.cellannotation2ID(annotation_type)
+        # Load the processed data if it exists, otherwise process the raw data and save it
+        if not os.path.exists(processed_path) or not os.path.exists(processed_mappings):
+            print("Processed data not found. Processing raw data...")
+            maca_data = MacaData(path)
+            maca_data.preprocess_data()
+            maca_data.save_processed_data(path_dir)
 
-        # Filter our cells with no annotation
-        self.adata = self.adata[self.adata.obs[annotation_type] != "nan", :]
-        self.adata = self.adata[self.adata.obs[annotation_type] != "NA", :]
+        # Save parameters
+        self.mode = mode
+        self.subset = subset
+        np.random.seed(seed)
 
-        # Subset data to only include cells with annotation
-        mode2tissues = {
-            "train": self._train_tissues,
-            "val": self._val_tissues,
-            "test": self._test_tissues,
-        }
-        self.adata = self.adata[
-            self.adata.obs["tissue"].isin(mode2tissues[mode])
-        ].copy()
+        # Load the processed data and mappings
+        self.adata = self._load_data(processed_path)
+        self.trg2idx, self.idx2trg = self._load_mappings(processed_mappings)
+
+        # Filter out cells of tissue that are not in the specified mode
+        self.adata = self._filter_tissue(mode)
 
         # Subset the loaded data
         if subset:
-            subset_size = len(self.adata) // 10
-            random_indices = np.random.choice(
-                self.adata.shape[0], size=subset_size, replace=False
-            )
-            self.adata = self.adata[random_indices, :].copy()
+            self.adata = self._subset_data()
 
-        # Filter out genes with less than min_cells having non-zero expression
-        if filter_genes:
-            sc.pp.filter_genes(self.adata, min_cells=5)
+    def _load_data(self, path):
+        return read_h5ad(path).copy()
 
-        # Preprocess data (filter cells, normalize, log, scal)
-        self.adata = self.preprocess_data(self.adata)
+    def _load_mappings(self, path):
+        with open(path, "r") as f:
+            trg2idx = json.load(f)
+
+        idx2trg = {idx: trg for trg, idx in trg2idx.items()}
+
+        return trg2idx, idx2trg
+
+    def _filter_tissue(self, mode):
+        """Filters out cells from the specified tissue."""
+        tissues = self._mode2tissues[mode]
+        tissue_filter = self.adata.obs["tissue"].isin(tissues)
+
+        return self.adata[tissue_filter, :]
+
+    def _subset_data(self):
+        """Subset the data to 10% of the original size."""
+        subset_size = len(self.adata) // 10
+        random_indices = np.random.choice(
+            self.adata.shape[0], size=subset_size, replace=False
+        )
+        return self.adata[random_indices, :].copy()
