@@ -1,11 +1,39 @@
+import pickle
 import os
 from abc import ABC
 
 import numpy as np
 from torch.utils.data import DataLoader
 
-from datasets.cell.utils import MacaDataLoader
+from datasets.cell.utils import MacaData
 from datasets.dataset import FewShotDataset, FewShotSubDataset, EpisodicBatchSampler
+
+train_tissues = [
+    "BAT",
+    "Bladder",
+    "Brain_Myeloid",
+    "Brain_Non-Myeloid",
+    "Diaphragm",
+    "GAT",
+    "Heart",
+    "Kidney",
+    "Limb_Muscle",
+    "Liver",
+    "MAT",
+    "Mammary_Gland",
+    "SCAT",
+    "Spleen",
+    "Trachea",
+]
+val_tissues = ["Skin", "Lung", "Thymus", "Aorta"]
+test_tissues = ["Large_Intestine", "Marrow", "Pancreas", "Tongue"]
+
+# Subset data to only include cells with annotation
+mode2tissues = {
+    "train": train_tissues,
+    "val": val_tissues,
+    "test": test_tissues,
+}
 
 
 class TMDataset(FewShotDataset, ABC):
@@ -24,7 +52,7 @@ class TMDataset(FewShotDataset, ABC):
     _dataset_url = "http://snap.stanford.edu/comet/data/tabula-muris-comet.zip"
 
     def load_tabular_muris(
-        self, mode: str = "train", min_samples: int = 20, subset: bool = False
+        self, mode: str = "train", min_samples: int = 20, subset: float = 1.0
     ):
         """
         Loads the Tabula Muris dataset from the data directory. Depending on the
@@ -40,28 +68,58 @@ class TMDataset(FewShotDataset, ABC):
         Args:
             mode (str): train, val, or test
             min_samples (int): minimum number of samples per class
-            subset (bool): whether to subset the data
+            subset (float): ratio of the data to load (e.g. 0.1 for 10%)
 
         Returns:
             samples (np.ndarray): samples in the dataset
             targets (np.ndarray): labels for the samples
         """
 
-        # Load all the data in the split
-        path = os.path.join(self._data_dir, "processed")
-        adata = MacaDataLoader(path=path, mode=mode, subset=subset).adata
+        # Process the data if it is not present in the data directory
+        processed_data_path = os.path.join(
+            self.data_dir, "processed", "tabula-muris.pkl"
+        )
+        mapping_path = os.path.join(self.data_dir, "processed", "mapping.pkl")
+        processed_dir = os.path.dirname(processed_data_path)
+
+        os.makedirs(processed_dir, exist_ok=True)
+        if not os.path.exists(processed_data_path) or not os.path.exists(mapping_path):
+            print("Did not find processed data. Processing TabulaMuris data now...")
+            # Load and pre-process the data
+            path = os.path.join(self._data_dir, "tabula-muris-comet.h5ad")
+            maca_data = MacaData(path)
+
+            # Save the processed data and mappings
+            pickle.dump(maca_data.adata, open(processed_data_path, "wb"))
+            pickle.dump(maca_data.trg2idx, open(mapping_path, "wb"))
+
+        # Load the processed data and encodings
+        self.data = pickle.load(open(processed_data_path, "rb"))
+        # mapping = pickle.load(open(mapping_path, "rb"))
+
+        # Filter out samples from the specified tissues
+        tissues = mode2tissues[mode]
+        tissue_filter = self.data.obs["tissue"].isin(tissues)
+        self.data = self.data[tissue_filter]
 
         # Filter out classes with less than min_samples (typically set to k-shot)
         filtered_index = (
-            adata.obs.groupby(["label"])
+            self.data.obs.groupby(["label"])
             .filter(lambda group: len(group) >= min_samples)
             .reset_index()["index"]
         )
-        adata = adata[filtered_index]
+        self.data = self.data[filtered_index]
+
+        # Subset the data
+        subset_size = int(len(self.data) * subset)
+        random_indices = np.random.choice(
+            self.data.shape[0], size=subset_size, replace=False
+        )
+        self.data = self.data[random_indices, :].copy()
 
         # Convert features and targets to numpy arrays
-        samples = adata.X
-        targets = adata.obs["label"].cat.codes.to_numpy(dtype=np.int32)
+        samples = self.data.X
+        targets = self.data.obs["label"].cat.codes.to_numpy(dtype=np.int32)
 
         return samples, targets
 
@@ -78,7 +136,7 @@ class TMSimpleDataset(TMDataset):
         batch_size: int,
         root: str = "./data/",
         mode: str = "train",
-        subset: bool = False,
+        subset: float = 1.0,
         min_samples: int = 20,
     ):
         """
@@ -90,7 +148,7 @@ class TMSimpleDataset(TMDataset):
             batch_size (int): batch size for the data loader
             root (str): path to the data directory to download the raw data in. (Default: `./data/`)
             mode (str): train, val, or test
-            subset (bool): whether to subset the data
+            subset (float): ratio of the data to load (e.g. 0.1 for 10%)
             min_samples (int): minimum number of samples per class
         """
         self.initialize_data_dir(root, download_flag=True)
@@ -172,6 +230,7 @@ class TMSetDataset(TMDataset):
         n_episode: int = 100,
         root: str = "./data",
         mode: str = "train",
+        subset: float = 1.0,
     ):
         """
         Initializes the dataset by loading the entire dataset into memory. If the data is not
@@ -189,7 +248,7 @@ class TMSetDataset(TMDataset):
         self.initialize_data_dir(root, download_flag=True)
 
         # Load the data
-        samples, targets = self.load_tabular_muris(mode, min_samples)
+        samples, targets = self.load_tabular_muris(mode, min_samples, subset=subset)
 
         # Get the unique cell labels
         self.unique_targets = np.unique(targets)

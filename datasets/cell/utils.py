@@ -1,5 +1,3 @@
-import os
-import json
 import numpy as np
 import pandas as pd
 import scanpy as sc
@@ -40,8 +38,8 @@ class MacaData:
         target_idxs = [self.trg2idx[target] for target in targets]
         self.adata.obs["label"] = pd.Categorical(values=target_idxs)
 
-        # Set processed flag to False
-        self.processed = False
+        # Preprocess the data
+        self.process_data()
 
     def process_data(self):
         """
@@ -104,133 +102,3 @@ class MacaData:
 
         self.processed = True
         self.adata = adata
-
-    def save_processed_data(self, dir: str):
-        """
-        Saves the processed data to the specified path. Raises an error if the
-        data has not been processed yet.
-
-        Args:
-            dir (str): path to the directory where to save the data
-
-        Returns:
-            None
-        """
-        os.makedirs(dir, exist_ok=True)
-        dst_file = os.path.join(dir, "tabula-muris-comet.h5ad")
-        dst_mapping = os.path.join(dir, "trg2idx.json")
-        if self.processed:
-            self.adata.write_h5ad(dst_file)
-            with open(dst_mapping, "w") as f:
-                json.dump(self.trg2idx, f)
-        else:
-            raise ValueError("Data has not been processed yet.")
-
-
-class MacaDataLoader:
-    """
-    Wrapper around the MacaData class that allows to load only tissue data for a
-    specific mode (train, val, test) and subset the data to a fraction of the original size.
-    """
-
-    _train_tissues = [
-        "BAT",
-        "Bladder",
-        "Brain_Myeloid",
-        "Brain_Non-Myeloid",
-        "Diaphragm",
-        "GAT",
-        "Heart",
-        "Kidney",
-        "Limb_Muscle",
-        "Liver",
-        "MAT",
-        "Mammary_Gland",
-        "SCAT",
-        "Spleen",
-        "Trachea",
-    ]
-    _val_tissues = ["Skin", "Lung", "Thymus", "Aorta"]
-    _test_tissues = ["Large_Intestine", "Marrow", "Pancreas", "Tongue"]
-
-    # Subset data to only include cells with annotation
-    _mode2tissues = {
-        "train": _train_tissues,
-        "val": _val_tissues,
-        "test": _test_tissues,
-    }
-
-    def __init__(
-        self,
-        path: str,
-        mode: str = "train",
-        subset: bool = False,
-        seed: int = 42,
-    ):
-        """
-        Loads the Tabula Muris dataset from the data directory specified in src_file
-        using the `anndata` library and preprocesses the data using `scanpy`.
-
-        Args:
-            path (str): path to the original .h5ad data
-            annotation_type (str): the type of annotation to use as ground truth
-            mode (str): train, val, or test
-            subset (bool): whether to subset the data to 10% of the original size
-            seed (int): seed for the random number generator
-
-        Returns:
-            None
-        """
-        # Get relevant paths to processed data
-        path_dir = os.path.join(os.path.dirname(path), "processed")
-        processed_path = os.path.join(path_dir, "tabula-muris-comet.h5ad")
-        processed_mappings = os.path.join(path_dir, "trg2idx.json")
-
-        # Load the processed data if it exists, otherwise process the raw data and save it
-        if not os.path.exists(processed_path) or not os.path.exists(processed_mappings):
-            print("Processed data not found. Processing raw data...")
-            maca_data = MacaData(path)
-            maca_data.preprocess_data()
-            maca_data.save_processed_data(path_dir)
-
-        # Save parameters
-        self.mode = mode
-        self.subset = subset
-        np.random.seed(seed)
-
-        # Load the processed data and mappings
-        self.adata = self._load_data(processed_path)
-        self.trg2idx, self.idx2trg = self._load_mappings(processed_mappings)
-
-        # Filter out cells of tissue that are not in the specified mode
-        self.adata = self._filter_tissue(mode)
-
-        # Subset the loaded data
-        if subset:
-            self.adata = self._subset_data()
-
-    def _load_data(self, path):
-        return read_h5ad(path).copy()
-
-    def _load_mappings(self, path):
-        with open(path, "r") as f:
-            trg2idx = json.load(f)
-
-        idx2trg = {idx: trg for trg, idx in trg2idx.items()}
-
-        return trg2idx, idx2trg
-
-    def _filter_tissue(self, mode):
-        """Filters out cells from the specified tissue."""
-        tissues = self._mode2tissues[mode]
-        tissue_filter = self.adata.obs["tissue"].isin(tissues)
-
-        return self.adata[tissue_filter, :]
-
-    def _subset_data(self):
-        """Subset the data to 10% of the original size."""
-        subset_size = len(self.adata) // 10
-        random_indices = np.random.choice(
-            self.adata.shape[0], size=subset_size, replace=False
-        )
-        return self.adata[random_indices, :].copy()
