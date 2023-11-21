@@ -5,36 +5,77 @@ from anndata import read_h5ad
 
 
 class MacaData:
-    def __init__(
-        self,
-        annotation_type="cell_ontology_class_reannotated",
-        src_file="dataset/cell_data/tabula-muris-senis-facs-official-annotations.h5ad",
-        filter_genes=True,
-    ):
+    """
+    Utility class to load and preprocess Tabula Muris dataset.
+    """
+
+    def __init__(self, path: str):
         """
-        annotation type: cell_ontology_class, cell_ontology id or free_annotation
+        Loads and preprocesses the Tabula Muris dataset from the the src_file
+        path using `anndata` library and preprocesses the data using `scanpy`.
+
+        Args:
+            path (str): path to the .h5ad file containing the dataset
+
+        Returns:
+            None
         """
-        self.adata = read_h5ad(src_file)
-        self.adata.obs[annotation_type] = self.adata.obs[annotation_type].astype(str)
-        self.adata = self.adata[self.adata.obs[annotation_type] != "nan", :]
-        self.adata = self.adata[self.adata.obs[annotation_type] != "NA", :]
+        # Load original data
+        self.adata = read_h5ad(path).copy()
 
-        # print(Counter(self.adata.obs.loc[self.adata.obs['age']=='18m', 'free_annotation']))
+        # Define target (cell type)
+        self.target = "cell_ontology_class_reannotated"
 
-        self.cells2names = self.cellannotation2ID(annotation_type)
+        # Compute ground truth mapping and add encoded targets to the dataset
+        targets = list(self.adata.obs[self.target])
+        unique_targets = sorted(set(targets))
 
-        if filter_genes:
-            sc.pp.filter_genes(self.adata, min_cells=5)
+        self.trg2idx = {trg: idx for idx, trg in enumerate(unique_targets)}
+        self.idx2trg = {idx: trg for idx, trg in enumerate(unique_targets)}
 
-        self.adata = self.preprocess_data(self.adata)
+        # Add ground truth labels to the dataset
+        targets = list(self.adata.obs[self.target])
+        target_idxs = [self.trg2idx[target] for target in targets]
+        self.adata.obs["label"] = pd.Categorical(values=target_idxs)
 
-    def preprocess_data(self, adata):
+        # Preprocess the data
+        self.process_data()
+
+    def process_data(self):
+        """
+        Processes the data using scanpy. It performs the following steps:
+            - Filter out cells with no target
+            - Filter out genes that are expressed in less than 5 cells
+            - Filter out cells with less than 5000 counts and 500 genes expressed
+            - Normalize per cell (simple lib size normalization)
+            - Filter out genes with low dispersion (retain the once with high variance)
+            - Log transform and scale the data
+            - Zero-imputation of Nans
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
+        adata = self.adata.copy()
+
+        # Filter out cells with no target
+        adata.obs[self.target] = adata.obs[self.target].astype(str)
+        missing_target = adata.obs[self.target].isin(["nan", "NA"])
+        adata = adata[~missing_target, :].copy()
+
+        # Filter out genes with less than min_cells having non-zero expression
+        sc.pp.filter_genes(adata, min_cells=5)
+
+        # Filter out cells with less than 5000 counts and 500 genes expressed
         sc.pp.filter_cells(adata, min_counts=5000)
         sc.pp.filter_cells(adata, min_genes=500)
 
-        sc.pp.normalize_per_cell(
-            adata, counts_per_cell_after=1e4
-        )  # simple lib size normalization?
+        # Normalize per cell (lib size normalization)
+        sc.pp.normalize_per_cell(adata, counts_per_cell_after=1e4)
+
+        # Filter out genes with low dispersion
         adata.raw = adata
         adata = sc.pp.filter_genes_dispersion(
             adata,
@@ -48,36 +89,16 @@ class MacaData:
             log=True,
             copy=True,
         )
-        adata = adata[:, adata.var.highly_variable]
+        adata = adata[:, adata.var.highly_variable].copy()
+
+        # Log-transform the data
         sc.pp.log1p(adata)
+
+        # Scale the data
         sc.pp.scale(adata, max_value=10, zero_center=True)
+
+        # Zero-imputation of Nans
         adata.X[np.isnan(adata.X)] = 0
-        # sc.tl.pca(self.adata)
 
-        return adata
-
-    def get_tissue_data(self, tissue, age=None):
-        """Select data for given tissue.
-        filtered: if annotated return only cells with annotations, if unannotated return only cells without labels, else all
-        age: '3m','18m', '24m', if None all ages are included
-        """
-
-        tiss = self.adata[self.adata.obs["tissue"] == tissue, :]
-
-        if age:
-            return tiss[tiss.obs["age"] == age]
-
-        return tiss
-
-    def cellannotation2ID(self, annotation_type):
-        """Adds ground truth clusters data."""
-        annotations = list(self.adata.obs[annotation_type])
-        annotations_set = sorted(set(annotations))
-
-        mapping = {a: idx for idx, a in enumerate(annotations_set)}
-
-        truth_labels = [mapping[a] for a in annotations]
-        self.adata.obs["label"] = pd.Categorical(values=truth_labels)
-        # 18m-unannotated
-        #
-        return mapping
+        self.processed = True
+        self.adata = adata
