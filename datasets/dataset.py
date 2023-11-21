@@ -105,7 +105,7 @@ class FewShotDataset(Dataset):
                     f" download manually. "
                 )
 
-            self._download_dataset(download_flag)
+            self._download_dataset()
 
     def _download_dataset(self):
         """

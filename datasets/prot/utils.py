@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 
 import os
@@ -22,9 +23,9 @@ EMB_LAYER = 33
 @dataclass_json
 @dataclass
 class ProtSample:
-    input_seq: torch.Tensor
-    annot: torch.Tensor
-    entry: str
+    input_seq: torch.Tensor  # Encoded sequence
+    annot: torch.Tensor  # Target (unencoded)
+    entry: str  # Entry name
 
 
 def get_ancestor_dict(file_path):
@@ -42,7 +43,11 @@ def get_ancestor_dict(file_path):
 
 def get_level(annots, level):
     """Returns annotations in annots from the given level"""
-    return {annot for annot in annots if go[annot].level == level}
+    return {
+        annot
+        for annot in annots
+        if go.get(annot) is not None and go.get(annot).level == level
+    }
 
 
 def select_single(annots):
@@ -83,21 +88,49 @@ def select_annot_via_ic(annots, term_frequency, max_freq):
     return annots[0]
 
 
-def get_samples_using_ic(root):
-    samples = []
-    fasta = SeqIO.parse(open(os.path.join(root, "uniprot_sprot.fasta")), "fasta")
-    reader = GafReader(
-        os.path.join(root, "filtered_goa_uniprot_all_noiea.gaf")
-    ).read_gaf()
-    adict = get_ancestor_dict(os.path.join(root, "sprot_ancestors.txt"))
+def get_samples_using_ic(root: str) -> list[ProtSample]:
+    """
+    Loads all samples from the data directory and returns a list of ProtSample objects.
+    Requires that the data directory contains the following files:
+    - uniprot_sprot.fasta
+    - filtered_goa_uniprot_all_noiea.gaf
+    - sprot_ancestors.txt
 
+    Args:
+        root (str): path to the data directory
+
+    Returns:
+        samples (list[ProtSample]): list of ProtSample objects
+    """
+
+    # Initialise paths
+    uniprot_sprot_path = os.path.join(root, "uniprot_sprot.fasta")
+    goa_uniprot_path = os.path.join(
+        os.path.join(root, "filtered_goa_uniprot_all_noiea.gaf")
+    )
+    sprot_ancestors_path = os.path.join(root, "sprot_ancestors.txt")
+
+    # Read files
+    fasta = SeqIO.parse(open(uniprot_sprot_path), "fasta")
+    adict = get_ancestor_dict(sprot_ancestors_path)
+
+    # Read GAF file (ignore stdout)
+    f = open(os.devnull, "w")
+    sys.stdout = f
+    reader = GafReader(goa_uniprot_path).read_gaf()
+    sys.stdout = sys.__stdout__
+    f.close()
+
+    # Get term frequency
     term_frequency, max_freq = get_term_frequency(root, reader)
 
+    # Iterate over all samples in the uniprot_sprot.fasta file
+    samples = []
     for i in fasta:
         entry = i.id.split("|")[1]
         try:
             annots = reader[entry]
-        except:
+        except Exception as _:
             continue
 
         if len(annots) == 0:
@@ -116,7 +149,7 @@ def get_samples_using_ic(root):
                         entry=entry,
                     )
                 )
-            except:
+            except Exception as _:
                 continue
     return samples
 
@@ -133,7 +166,7 @@ def get_samples(root, level=5):
         entry = i.id.split("|")[1]
         try:
             annots = reader[entry]
-        except:
+        except Exception as _:
             continue
 
         if len(annots) == 0:
@@ -195,7 +228,7 @@ def get_annot_counts(samples):
         sample = samples[i]
         try:
             counts[sample.annot] += 1
-        except:
+        except Exception as _:
             counts[sample.annot] = 1
     return counts
 
@@ -243,7 +276,7 @@ def get_entry_dict(root, level=5):
         entry = i.id.split("|")[1]
         try:
             annots = reader[entry]
-        except:
+        except Exception as _:
             continue
 
         if len(annots) == 0:
@@ -255,6 +288,6 @@ def get_entry_dict(root, level=5):
             propagated = annots | ancestors
             propagated_level = get_level(propagated, level)
             entry_dict[entry] = propagated_level
-        except:
+        except Exception as _:
             continue
     return entry_dict
