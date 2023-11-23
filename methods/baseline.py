@@ -1,8 +1,11 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import wandb
 from torch.autograd import Variable
+
+import wandb
+from abc import ABC
+from IPython.display import clear_output
 
 from backbones.blocks import distLinear
 from methods.meta_template import MetaTemplate
@@ -19,15 +22,19 @@ class Baseline(MetaTemplate):
         n_classes (int): number of classes in the training set
         loss (str): the loss function to be used (softmax or dist)
         type (str): the type of the task (classification or regression)
+        log_wandb (bool): whether to log the results to wandb
+        print_freq (int): how often (in terms of # of batches) to print the results
     """
     def __init__(
         self,
-        backbone,
-        n_way,
-        n_support,
-        n_classes=1,
-        loss="softmax",
-        type="classification",
+        backbone : nn.Module,
+        n_way : int,
+        n_support : int,
+        n_classes : int = 1,
+        loss : str = "softmax",
+        type : str = "classification",
+        log_wandb : bool = True,
+        print_freq : int = 10,
     ):
 
         # Initialize the the MetaTemplate parent class
@@ -60,12 +67,19 @@ class Baseline(MetaTemplate):
         # Define the device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def forward(self, x):
+        # Define logging parameters
+        self.log_wandb = log_wandb
+        self.print_freq = print_freq
+
+    def forward(self, x : torch.Tensor) -> torch.Tensor:
         """
-        Forward the data through the backbone.
+        [Pretraining] Forward the data through the backbone.
 
         Args:
             x (torch.Tensor / [torch.Tensor]): the input data
+
+        Returns:
+            out (torch.Tensor): the output of the backbone
         """
 
         # TODO: why list?
@@ -79,7 +93,7 @@ class Baseline(MetaTemplate):
         # Extract the features
         out = self.feature.forward(x)
 
-        # Using Linear layer, map the features to the output dimension
+        # Using chosen classifer, map the embeddings vector for each to the number of classes
         if self.classifier != None:
             scores = self.classifier.forward(out)
         else:
@@ -87,9 +101,9 @@ class Baseline(MetaTemplate):
 
         return scores
 
-    def set_forward_loss(self, x, y):
+    def set_forward_loss(self, x : torch.Tensor, y : torch.Tensor) -> torch.Tensor:
         """
-        Forward the data through the model and compute the loss.
+        [Pretraining] Forward the data through the model and compute the loss.
 
         Args:
             x (torch.Tensor / [torch.Tensor]): the input data
@@ -111,28 +125,24 @@ class Baseline(MetaTemplate):
         # Compute the loss and return
         return self.loss_fn(scores, y)
 
-    def train_loop(self, epoch, train_loader, optimizer):
+    def train_loop(self, epoch : int, train_loader : torch.utils.data.DataLoader, optimizer : torch.optim.Optimizer) -> float:
         """
-        Train the model for one epoch and log the loss.
+        [Pretraining] Train the model for one epoch and log the loss.
 
         Args:
             epoch (int): the current epoch
             train_loader (DataLoader): the training data loader
             optimizer (Optimizer): the optimizer
         
-        Notes:
-            We override the train_loop method from the parent class because
-            TODO: why?
+        Returns:
+            avg_loss (float): the average loss over the epoch
         """
 
-        # Define the print frequency and initialize the average loss
-        print_freq = 10
+        # Initialize tracking variables
         avg_loss = 0
 
         # Train loop
-        print("here")
         for i, (x, y) in enumerate(train_loader):
-            print("got the data")
             # Forward the data through the model and compute the loss
             optimizer.zero_grad()
             loss = self.set_forward_loss(x, y)
@@ -145,17 +155,21 @@ class Baseline(MetaTemplate):
             avg_loss = avg_loss + loss.item()
 
             # Print the loss
-            if i % print_freq == 0:
+            if i % self.print_freq == 0:
+                clear_output(wait=True)
+                current_loss = avg_loss / float(i + 1)
                 print(
-                    "Epoch {:d} | Batch {:d}/{:d} | Loss {:f}".format(
-                        epoch, i, len(train_loader), avg_loss / float(i + 1)
+                    "ℹ️ Epoch {:d} | Batch {:d}/{:d} | Loss {:f}".format(
+                        epoch, i, len(train_loader), current_loss
                     )
                 )
-                wandb.log({"loss/train": avg_loss / float(i + 1)})
+                if self.log_wandb: wandb.log({"loss/train": current_loss})
 
-    def test_loop(self, test_loader, return_std=None):
+        return avg_loss / len(train_loader) 
+
+    def test_loop(self, test_loader : torch.utils.data.DataLoader, return_std : bool = False) -> (float, float):
         """
-        Test the model and log the accuracy.
+        [Finetuning] Test the model and log the accuracy.
 
         Args:
             test_loader (DataLoader): the test data loader
@@ -164,18 +178,15 @@ class Baseline(MetaTemplate):
         Returns:
             acc_mean (float): the mean accuracy
             acc_std (float): the standard deviation of the accuracy
-        
-        Notes:
-            We override the test_loop method from the parent class because
-            TODO: why?
         """
 
-        # Collect the accuracy for each class, TODO: is this true, each class?
+        # Collect the accuracy for each episode
         acc_all = []
         iter_num = len(test_loader)
         for x, y in test_loader:
 
-            # TODO: not sure why we have to do this since we do not use it
+            # Determine the number of query examples based on the number of support examples
+            # which was defined in the constructor
             if isinstance(x, list):
                 self.n_query = x[0].size(1) - self.n_support
             else:
@@ -213,19 +224,17 @@ class Baseline(MetaTemplate):
         else:
             return acc_mean
 
-    def set_forward(self, x, y=None):
+    def set_forward(self, x : torch.Tensor, y : torch.Tensor = None) -> torch.Tensor:
         """
-        Full training loop.
-
-        TODO: provide more in depth explanation.
-        TODO: why are we not using train loop function here?
+        [Finetuining] Fine-tune the model for the given episode's data
+        and then evaluate the model on the query set.
         
         Args:
             x (torch.Tensor / [torch.Tensor]): the input data
             y (torch.Tensor): the ground truth 
 
         Returns:
-            scores (torch.Tensor): the scores 
+            scores (torch.Tensor): the predictions on the query set
         """
 
         # Run backbone on the input data and then split 
@@ -234,9 +243,7 @@ class Baseline(MetaTemplate):
         # Shape of z_query: [n_way * n_query, feat_dim]
         z_support, z_query = self.parse_feature(x, is_feature=False)
 
-        # Detach ensures we don't change the weights in main training process
-        # TODO: why do need the weights to be part of the main training process?
-        # (I guess because we only want to train the classifier?)
+        # Freese the backbone
         z_support = (
             z_support.contiguous()
             .view(self.n_way * self.n_support, -1)
@@ -287,25 +294,24 @@ class Baseline(MetaTemplate):
 
         loss_function = self.loss_fn.to(self.device)
 
+        # Finetune the classifier
         batch_size = 4
         support_size = self.n_way * self.n_support
-        for epoch in range(100):
+        for _ in range(100):
             rand_id = np.random.permutation(support_size)
             for i in range(0, support_size, batch_size):
                 set_optimizer.zero_grad()
 
-                # Get random selection for the current batch / episode
+                # Select the batch from the support set
                 selected_id = torch.from_numpy(
                     rand_id[i : min(i + batch_size, support_size)]
                 ).to(self.device)
 
-                # Get the support set for the current batch / episode
+                # Get the embeddings and labels for the batch
                 z_batch = z_support[selected_id]
-
-                # Get the labels for the support set for the current batch / episode
                 y_batch = y_support[selected_id]
 
-                # Compute the scores and loss
+                # Compute the predictions and loss
                 scores = linear_clf(z_batch)
                 loss = loss_function(scores, y_batch)
 
@@ -313,7 +319,7 @@ class Baseline(MetaTemplate):
                 loss.backward()
                 set_optimizer.step()
 
-        # Compute the final scores for the query set 
+        # Compute the final predictions for the query set 
         scores = linear_clf(z_query)
 
         return scores
