@@ -88,7 +88,7 @@ def select_annot_via_ic(annots, term_frequency, max_freq):
     return annots[0]
 
 
-def get_samples_using_ic(root: str) -> list[ProtSample]:
+def get_samples_using_ic(root: str, level : int = 5) -> list[ProtSample]:
     """
     Loads all samples from the data directory and returns a list of ProtSample objects.
     Requires that the data directory contains the following files:
@@ -241,10 +241,16 @@ def get_embedding(emb_path, entry):
     return emb
 
 
-def encodings(root, level=5):
+def encodings(root, level=5, is_ic=True):
     """Returns dictionary of label encodings of annotations"""
     adict = get_ancestor_dict(os.path.join(root, "sprot_ancestors.txt"))
-    all_annots = get_level(set(adict.keys()), level)
+
+    # Perform level filtering if neccessary
+    if is_ic:
+        all_annots = set(adict.keys())
+    else:
+        all_annots = get_level(set(adict.keys()), level)
+    
     for key, value in adict.items():
         all_annots |= value
     le = LabelEncoder()
