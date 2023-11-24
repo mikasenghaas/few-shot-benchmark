@@ -18,12 +18,24 @@ from torch_geometric.nn.conv import MessagePassing
 # Basic ResNet model
 
 
+#%%
 def init_layer(L):
+    """
+    Initialize a Conv1d, Conv2d or BatchNorm2d layer.
+
+    :param L: Layer to be initialized. `L.kernel_size` is expected to be at least two-dimensional.
+
+    Based on the layer type, the initialization is done as follows:
+
+    - **Conv1d/Conv2d**: Initialize with Kaiming He normal initialization
+    - **BatchNorm2d**: Initialize with ones for weights and zeros for biases.
+    """
+    assert len(L.kernel_size) >= 2, "Expected kernel size to be at least 2D"
     # Initialization using fan-in
     if isinstance(L, nn.Conv2d):
         n = L.kernel_size[0] * L.kernel_size[1] * L.out_channels
         L.weight.data.normal_(0, math.sqrt(2.0 / float(n)))
-    if isinstance(L, nn.Conv1d):
+    elif isinstance(L, nn.Conv1d):
         n = L.kernel_size[0] * L.kernel_size[1] * L.out_channels
         L.weight.data.normal_(0, math.sqrt(2.0 / float(n)))
     elif isinstance(L, nn.BatchNorm2d):
@@ -32,6 +44,14 @@ def init_layer(L):
 
 
 class distLinear(nn.Module):
+    """
+    This class implements a specialized linear layer where both inputs and weights are normalized. The normalization ensures that the dot product between them computes a **cosine similarity**, scaled by `self.scale_factor`. Cosine similarity for two vectors :math:`A` and :math:`B` is defined as:
+
+    :math:`similarity = A \\cdot B / (||A|| * ||B||)`
+
+    where :math:`||A||` is the L2 norm of :math:`A`.
+    """
+
     def __init__(self, indim, outdim):
         super(distLinear, self).__init__()
         self.L = nn.Linear(indim, outdim, bias=False)
@@ -50,14 +70,14 @@ class distLinear(nn.Module):
 
     def forward(self, x):
         x_norm = torch.norm(x, p=2, dim=1).unsqueeze(1).expand_as(x)
-        x_normalized = x.div(x_norm + 0.00001)
+        x_normalized = x.div(x_norm + 0.00001)  # divides by norm of row vectors of x, handles 0 norm cases
         if not self.class_wise_learnable_norm:
             L_norm = (
-                torch.norm(self.L.weight.data, p=2, dim=1)
+                torch.norm(self.L.weight.data, p=2, dim=1) # compute the norm of each row vector of L.weight.data
                 .unsqueeze(1)
                 .expand_as(self.L.weight.data)
             )
-            self.L.weight.data = self.L.weight.data.div(L_norm + 0.00001)
+            self.L.weight.data = self.L.weight.data.div(L_norm + 0.00001) # normalize the row vectors of L.weight.data same as with x_normalized
         cos_dist = self.L(
             x_normalized
         )  # matrix product by forward function, but when using WeightNorm, this also multiply the cosine distance by a class-wise learnable norm, see the issue#4&8 in the github
@@ -65,8 +85,10 @@ class distLinear(nn.Module):
 
         return scores
 
-
 class Flatten(nn.Module):
+    """
+    This class flattens the input tensor to 2D, where the batch dimension is preserved while the other dimensions are flattened.
+    """
     def __init__(self):
         super(Flatten, self).__init__()
 

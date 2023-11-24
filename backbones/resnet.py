@@ -13,7 +13,7 @@ from backbones.blocks import (
 class ResNet(nn.Module):
     maml = False  # Default
 
-    def __init__(self, block, list_of_num_layers, list_of_out_dims, flatten=True):
+    def __init__(self, block, list_of_num_layers, list_of_out_dims, flatten=True, **kwargs):
         # list_of_num_layers specifies number of layers in each stage
         # list_of_out_dims specifies number of output channel for each stage
         super(ResNet, self).__init__()
