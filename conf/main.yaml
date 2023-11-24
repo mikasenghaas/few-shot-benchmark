@@ -1,35 +1,37 @@
 defaults:
+  - _self_ # Prevents warning in Hydra 1.1 (https://hydra.cc/docs/1.2/upgrades/1.0_to_1.1/default_composition_order/)
   - dataset: tabula_muris
   - method: baseline_pp
 
-model: ResNet18 # i think this doesn't change anything, backbone is changed at dataset/*.yaml
-n_way: 5
-n_shot: 5
-n_query: 5
+model: ResNet18 # Which backbone to use (TODO: Doesn't seem to change, as defined in dataset/*.yaml)
+n_way: 5 # Number of classes to distinguish in few-shot learning
+n_shot: 5 # Number of support samples per class to train on
+n_query: 5 # Number of query samples per class to evaluate on
 
-mode: train
+mode: train # Whether to train or test a model
+device: "cpu" # Device to use
+iter_num: 600 # Number of epochs to train
 
 exp:
-  name: ???
-  save_freq: 10
-  resume: false
-  seed: 42
-  val_freq: 1
+  name: ??? # Experiment name
+  save_freq: 10 # Save the model state every save_freq epochs
+  val_freq: 1 # Compute and print validation performance every val_freq epochs
+  resume: false # Whether to resume training from a checkpoint
+  seed: 42 # Seed to use
 
-optimizer: Adam
-lr: 0.001
-optimizer_cls:
+optimizer: Adam # Optimiser to use
+lr: 0.001 # Learning rate to use
+optimizer_cls: # Optimiser instantiation
   _target_: torch.optim.${optimizer}
   lr: ${lr}
 
 checkpoint:
-  dir: checkpoints/${exp.name}/${dataset.name}/${method.name}_${model}
-  test_iter: best_model
-  time: latest
+  dir: checkpoints/${exp.name}/${dataset.name}/${method.name}_${model} # Directory for checkpoint
+  test_iter: best_model # Use best_model for testing
+  time: latest # Use latest model
 
 wandb:
-  project: "metameta-learners"
-  entity: "barlaada"
-  mode: "online" # Can set to offline, disabled
+  project: "few-shot-benchmark" # W&B project name
+  entity: "metameta-learners" # W&B team name
+  mode: "online" # Set to offline to stop W&B tracking
 
-iter_num: 600
