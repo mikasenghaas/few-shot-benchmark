@@ -378,9 +378,8 @@ class MetaTemplate(nn.Module, ABC):
             
             # Compute the pearson correlation
             else:
-                corr = self.correlation(x, y)
-                evals.append(corr)
-
+                raise NotImplementedError("Regression not implemented yet")
+        
         # Compute the mean and standard deviation of the metric
         metric_mean, metric_std = self.eval_test_performance(evals)
 
