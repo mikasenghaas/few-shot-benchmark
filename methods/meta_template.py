@@ -148,7 +148,7 @@ class MetaTemplate(nn.Module, ABC):
 
         # Get the labels of the query set
         # Ex. n_way = 2, n_query = 3 -> y_query = [0, 0, 0, 1, 1, 1]
-        y_query = np.repeat(range(self.n_way), self.n_query)
+        y_query = self.get_episode_labels(self.n_query, enable_grad=False).cpu().numpy()
 
         # Argmax the scores to get the predictions, i.e., for each
         # query sample, we get the class with the highest score
@@ -193,17 +193,17 @@ class MetaTemplate(nn.Module, ABC):
 
         Args:
             epoch (int): current epoch
-            i (int): current batch
-            n (int): total number of batches
+            i (int): current batch / episode
+            n (int): total number of batches / episodes
             avg_loss (float): average loss
         """
 
-        if i % self.print_freq == 0:
+        if (i + 1) % self.print_freq == 0:
             clear_output(wait=True)
             current_loss = avg_loss / float(i + 1)
             print(
-                "ℹ️ epoch {:d} | batch {:d}/{:d} | loss {:f}".format(
-                    epoch, i, n, current_loss
+                "ℹ️ epoch {:d} | batch/episode {:d}/{:d} | loss {:f}".format(
+                    epoch, i + 1, n, current_loss
                 )
             )
             if self.log_wandb: wandb.log({"loss/train": current_loss})
@@ -280,24 +280,28 @@ class MetaTemplate(nn.Module, ABC):
 
         return corr.cpu().detach().numpy()
 
-    def get_support_labels(self, enable_grad : bool = True) -> torch.Tensor:
+    def get_episode_labels(self, n : int, enable_grad : bool = True) -> torch.Tensor:
         """
-        [Helper] Return the labels of the support set.
+        [Helper] Return the labels of for the support / query set.
 
-        Example: n_way = 2, n_support = 3 -> y_support = [0, 0, 0, 1, 1, 1]
-
+        Args:
+            n (int): number of samples in the set
+            enable_grad (bool): whether to enable gradient computation or not
         Returns:
             y_support (torch.Tensor): support set labels
+
+        Example:
+            n_way = 2, n_support = 3 -> y_support = [0, 0, 0, 1, 1, 1]
         """
 
         # Create the labels of the support set
-        y_support = torch.from_numpy(np.repeat(range(self.n_way), self.n_support))
+        y = torch.from_numpy(np.repeat(range(self.n_way), n))
 
         # ensure they have gradient computation enabled
         if enable_grad:
-            y_support = Variable(y_support.to(self.device))
+            y = Variable(y.to(self.device))
 
-        return y_support
+        return y
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
         """
@@ -467,7 +471,7 @@ class MetaTemplate(nn.Module, ABC):
         z_query = z_query.contiguous().view(self.n_way * self.n_query, -1)
 
         # Create the labels of the support set 
-        y_support = self.get_support_labels()
+        y_support = self.get_episode_labels(self.n_support, enable_grad=True)
 
         # Set up the new softmax classifier
         linear_clf = nn.Linear(self.feat_dim, self.n_way)

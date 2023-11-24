@@ -33,13 +33,12 @@ class Baseline(MetaTemplate):
         n_classes : int = 1,
         loss : str = "softmax",
         type : str = "classification",
-        log_wandb : bool = True,
-        print_freq : int = 10,
+        **kwargs
     ):
 
         # Initialize the the MetaTemplate parent class
         change_way = True
-        super(Baseline, self).__init__(backbone, n_way, n_support, change_way, log_wandb, print_freq, type)
+        super(Baseline, self).__init__(backbone, n_way, n_support, change_way, type=type, **kwargs)
 
         # Define the feature extractor
         self.feature = backbone
@@ -196,7 +195,7 @@ class Baseline(MetaTemplate):
 
         # Classification
         if y is None:
-            y_support = self.get_support_labels()
+            y_support = self.get_episode_labels(self.n_support, enable_grad=True)
         
         # Regression
         else:  
