@@ -126,7 +126,7 @@ def train(
     # Initialise W&B run
     wandb.init(
         project=cfg.wandb.project,
-        # entity=cfg.wandb.entity,
+        entity=cfg.wandb.entity,
         name=name,
         config=OmegaConf.to_container(cfg, resolve=True),
         group=cfg.exp.name,
