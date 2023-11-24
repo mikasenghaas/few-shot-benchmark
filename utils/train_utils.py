@@ -11,7 +11,6 @@ Includes:
 import time
 import os
 import math
-import logging
 
 import numpy as np
 import torch
@@ -82,8 +81,8 @@ def initialize_dataset_model(cfg: OmegaConf, device: torch.device):
     model = model.to(device)
 
     # Get train and val data loaders
-    train_loader = train_dataset.get_data_loader()
-    val_loader = val_dataset.get_data_loader()
+    train_loader = train_dataset.get_data_loader(num_workers=0, pin_memory=False)
+    val_loader = val_dataset.get_data_loader(num_workers=0, pin_memory=False)
 
     if cfg.method.name == "maml":
         cfg.method.stop_epoch *= model.n_task  # maml use multiple tasks in one update
@@ -114,7 +113,6 @@ def train(
         model: torch.nn.Module
     """
     logger = get_logger(__name__, cfg)
-    logger.info("Starting model training")
 
     # Set checkpoint directory (based on combination of experiment name, dataset, method, model and time)
     cfg.checkpoint.time = time.strftime("%Y%m%d_%H%M%S", time.localtime())
@@ -134,6 +132,7 @@ def train(
     )
 
     # Initialise W&B run
+    logger.info("Initializing W&B")
     wandb.init(
         project=cfg.wandb.project,
         entity=cfg.wandb.entity,
@@ -154,14 +153,17 @@ def train(
             model.load_state_dict(tmp["state"])
 
     # Instantiate optimizer
+    logger.info(f"Initialise {cfg.optimizer} with lr {cfg.lr}")
     optimizer = instantiate(cfg.optimizer_cls, params=model.parameters())
 
     # Log model and optimizer details to W&B
+    logger.info("Log model and optimiser details to W&B")
     wandb.config.update({"model_details": model_to_dict(model)})
     wandb.config.update({"optimizer_details": opt_to_dict(optimizer)})
 
     # Training loop
     max_acc = -1
+    logger.info("Start training")
     for epoch in range(cfg.method.start_epoch, cfg.method.stop_epoch):
         wandb.log({"epoch": epoch})
         model.train()
@@ -171,17 +173,17 @@ def train(
         if epoch % cfg.exp.val_freq == 0 or epoch == cfg.method.stop_epoch - 1:
             model.eval()
             acc = model.test_loop(val_loader)
-            # print(f"Epoch {epoch}: {acc:.2f}")
             wandb.log({"acc/val": acc})
 
             if acc > max_acc:
-                # print("best model! save...")
+                logger.info(f"New best model! (Acc. {acc:.3f} > {max_acc:.3f})")
                 max_acc = acc
                 outfile = os.path.join(cp_dir, "best_model.tar")
                 torch.save({"epoch": epoch, "state": model.state_dict()}, outfile)
 
         # Save model on every save_freq or last epoch
         if epoch % cfg.exp.save_freq == 0 or epoch == cfg.method.stop_epoch - 1:
+            logger.info(f"Save model to {cp_dir}")
             outfile = os.path.join(cp_dir, "{:d}.tar".format(epoch))
             torch.save({"epoch": epoch, "state": model.state_dict()}, outfile)
 
@@ -208,23 +210,32 @@ def test(cfg: OmegaConf, model: nn.Module, split: str):
     # Instantiate test dataset
     match cfg.method.type:
         case "simple":
+            logger.info(
+                f"Initialise {split} {cfg.dataset.name} dataset with batch size {cfg.method.val_batch}"
+            )
             test_dataset = instantiate(
                 cfg.dataset.simple_cls, batch_size=cfg.method.val_batch, mode=split
             )
         case _:
+            logger.info(
+                f"Initialise {split} {cfg.dataset.name} dataset with {cfg.iter_num} episodes"
+            )
             test_dataset = instantiate(
                 cfg.dataset.set_cls, n_episode=cfg.iter_num, mode=split
             )
 
     # Get the test loader
-    test_loader = test_dataset.get_data_loader()
+    logger.info("Get test loader")
+    test_loader = test_dataset.get_data_loader(num_workers=0, pin_memory=False)
 
     # Load model from checkpoint (either latest or specified)
+    logger.info("Load model from checkpoint")
     model_file_path = get_model_file(cfg)
     model.load_state_dict(torch.load(model_file_path)["state"])
     model.eval()
 
     # Test loop
+    logger.info("Starting test loop")
     match cfg.method.eval_type:
         case "simple":
             acc_all = []
@@ -242,7 +253,9 @@ def test(cfg: OmegaConf, model: nn.Module, split: str):
             acc_mean, acc_std = model.test_loop(test_loader, return_std=True)
 
     # Write results to file in checkpoint directory
-    with open(f"./checkpoints/{cfg.exp.name}/results.txt", "a") as f:
+    path = os.path.join("checkpoints", cfg.exp.name, "results.txt")
+    logger.info(f"Write results to {path}")
+    with open(path, "a") as f:
         timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
         exp_setting = "%s-%s-%s-%s %sshot %sway" % (
             cfg.dataset.name,

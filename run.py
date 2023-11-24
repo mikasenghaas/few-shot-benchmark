@@ -36,23 +36,24 @@ def main(cfg):
 
     # Test the model on the specified splits
     results = []
-    # print("Checkpoint directory:", cfg.checkpoint.dir)
     for split in cfg.eval_split:
+        logger.info(f"Testing on {split} split.")
         acc_mean, acc_std = test(cfg, model, split)
         results.append([split, acc_mean, acc_std])
 
-    # print(f"Results logged to ./checkpoints/{cfg.exp.name}/results.txt")
+    logger.info(f"Results logged to ./checkpoints/{cfg.exp.name}/results.txt")
 
     # Display training results (from W&B) in a table
+    logger.info("Log training results to W&B.")
     if cfg.mode == "train":
         table = wandb.Table(data=results, columns=["split", "acc_mean", "acc_std"])
         wandb.log({"eval_results": table})
 
     # Display test results in a table
+    logger.info(f"Final test results on {cfg.eval_split} splits:\n")
     display_table = PrettyTable(["split", "acc_mean", "acc_std"])
     for row in results:
         display_table.add_row(row)
-
     print(display_table)
 
     wandb.finish()
