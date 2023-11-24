@@ -11,8 +11,9 @@ Includes:
 import time
 import os
 import math
-import numpy as np
+import logging
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -21,6 +22,7 @@ from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
 from utils.io_utils import (
+    get_logger,
     get_resume_file,
     model_to_dict,
     opt_to_dict,
@@ -42,8 +44,10 @@ def initialize_dataset_model(cfg: OmegaConf, device: torch.device):
         val_loader: torch.utils.data.DataLoader
         model: torch.nn.Module
     """
+    logger = get_logger(__name__, cfg)
 
     # Instatiate train dataset
+    logger.info("Initializing training dataset.")
     match cfg.method.type:
         case "baseline":
             train_dataset = instantiate(
@@ -55,6 +59,7 @@ def initialize_dataset_model(cfg: OmegaConf, device: torch.device):
             raise ValueError(f"Unknown method type: {cfg.method.type}")
 
     # Instantiate val dataset
+    logger.info("Initializing validation dataset.")
     match cfg.method.eval_type:
         case "simple":
             val_dataset = instantiate(
@@ -65,11 +70,14 @@ def initialize_dataset_model(cfg: OmegaConf, device: torch.device):
 
     # Instantiate backbone (For MAML, need to instantiate backbone with fast weight)
     if cfg.method.fast_weight:
+        logger.info("Initialise backbone (with fast weight)")
         backbone = instantiate(cfg.backbone, x_dim=train_dataset.dim, fast_weight=True)
     else:
+        logger.info("Initialise backbone (no fast weight)")
         backbone = instantiate(cfg.backbone, x_dim=train_dataset.dim)
 
     # Instatiante model with backbone
+    logger.info("Initialise model")
     model = instantiate(cfg.method.cls, backbone=backbone)
     model = model.to(device)
 
@@ -105,6 +113,8 @@ def train(
     Returns:
         model: torch.nn.Module
     """
+    logger = get_logger(__name__, cfg)
+    logger.info("Starting model training")
 
     # Set checkpoint directory (based on combination of experiment name, dataset, method, model and time)
     cfg.checkpoint.time = time.strftime("%Y%m%d_%H%M%S", time.localtime())
@@ -192,6 +202,9 @@ def test(cfg: OmegaConf, model: nn.Module, split: str):
         acc_mean: float
         acc_std: float
     """
+    logger = get_logger(__name__, cfg)
+    logger.info("Starting model testing")
+
     # Instantiate test dataset
     match cfg.method.type:
         case "simple":

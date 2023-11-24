@@ -1,16 +1,17 @@
 import hydra
-from omegaconf import OmegaConf
 import wandb
+import logging
 from prettytable import PrettyTable
 
-from utils.train_utils import initialize_dataset_model, train, test
 from utils.io_utils import (
     check_cfg,
     get_device,
     fix_seed,
     hydra_setup,
     print_cfg,
+    get_logger,
 )
+from utils.train_utils import initialize_dataset_model, train, test
 
 
 @hydra.main(version_base=None, config_path="conf", config_name="main")
@@ -21,10 +22,12 @@ def main(cfg):
     fix_seed(cfg.exp.seed)
 
     # Print experiment configuration
+    logger = get_logger(__name__, cfg)
+    logger.info("Starting experiment with configuration:\n")
     print_cfg(cfg)
 
     # Initialise data loader and model
-    device = get_device(cfg.device)
+    device = get_device(cfg.exp.device)
     train_loader, val_loader, model = initialize_dataset_model(cfg, device)
 
     # Train the model if specified

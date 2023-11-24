@@ -1,6 +1,7 @@
 import glob
 import os
 import random
+import logging
 from prettytable import PrettyTable
 
 import numpy as np
@@ -229,17 +230,59 @@ def print_cfg(cfg: OmegaConf):
     Returns:
         None
     """
+    # Flatten the config dictionary
     cfg = OmegaConf.to_container(cfg, resolve=True)
     flat_cfg = flatten_dict(cfg)
+
+    # Keep only relevant keys
+    relevant_keys = [
+        "exp.name",
+        "exp.device",
+        "dataset.name",
+        "method.name",
+        "n_way",
+        "n_shot",
+        "n_query",
+        "method.stop_epoch",
+    ]
+    filtered_flat_cfg = {key: flat_cfg[key] for key in relevant_keys}
 
     # Create a PrettyTable object
     table = PrettyTable()
 
-    # Define columns
-    table.field_names = ["Key", "Value"]
-
     # Add rows to the table
-    for key, value in flat_cfg.items():
-        table.add_row([key, value])
+    for key, value in filtered_flat_cfg.items():
+        table.add_column(key, [value])
 
     print(table)
+    print()
+
+
+def get_logger(name: str, cfg: OmegaConf) -> logging.Logger:
+    """
+    Create a custom logger with specific formatting.
+
+    Args:
+        name: str, name of the logger
+        level: logging level
+
+    Returns:
+        logger: logging.Logger
+    """
+    level = logging.getLevelName(cfg.exp.log_level)
+
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+
+    # Create formatter and add it to the handlers
+    formatter = logging.Formatter("[%(levelname)s] (%(name)s) %(message)s")
+
+    # Create a console handler
+    ch = logging.StreamHandler()
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
+
+    # Avoid propagating to the root logger
+    logger.propagate = False
+
+    return logger

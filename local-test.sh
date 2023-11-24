@@ -12,24 +12,24 @@ as expected.
 exp_name=local-test
 device=cpu
 stop_epoch=1
-eval_split=["test"]
-wandb_mode=offline
+eval_split=[test]
+wandb_mode=disabled
 
 # Hyper-parameter grid
 methods=( "baseline" "baseline_pp" "matchingnet" "protonet" "maml" )
-datasets=( "swissprot" "tabula_muris" )
+datasets=( "tabula_muris" "swissprot" )
 
-for method in "${methods[@]}"
+for dataset in "${datasets[@]}"
 do
-    for dataset in "${datasets[@]}"
+    for method in "${methods[@]}"
     do
         python run.py \
            exp.name=$exp_name \
-           device=$device \
+           exp.device=$device \
            method=$method \
            method.stop_epoch=$stop_epoch \
            dataset=$dataset \
-           dataset.eval_split=$eval_split \
-           wandb.mode=$wand_mode 
+           eval_split=$eval_split \
+           wandb.mode=$wandb_mode 
     done
 done
