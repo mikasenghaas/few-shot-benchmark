@@ -269,18 +269,20 @@ def get_logger(name: str, cfg: OmegaConf) -> logging.Logger:
     Returns:
         logger: logging.Logger
     """
+    # Return existing logger if exists
     level = logging.getLevelName(cfg.exp.log_level)
 
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
     # Create formatter and add it to the handlers
-    formatter = logging.Formatter("[%(levelname)s] (%(name)s) %(message)s")
+    formatter = logging.Formatter("[%(levelname)s] (%(name)s.%(funcName)s) %(message)s")
 
-    # Create a console handler
-    ch = logging.StreamHandler()
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
+    # Add a console handler if not already present
+    if not logger.hasHandlers():
+        ch = logging.StreamHandler()
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
 
     # Avoid propagating to the root logger
     logger.propagate = False
