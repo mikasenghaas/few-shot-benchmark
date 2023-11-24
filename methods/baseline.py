@@ -38,7 +38,8 @@ class Baseline(MetaTemplate):
     ):
 
         # Initialize the the MetaTemplate parent class
-        super(Baseline, self).__init__(backbone, n_way, n_support, change_way=True)
+        change_way = True
+        super(Baseline, self).__init__(backbone, n_way, n_support, change_way, log_wandb, print_freq, type)
 
         # Define the feature extractor
         self.feature = backbone
@@ -66,10 +67,6 @@ class Baseline(MetaTemplate):
 
         # Define the device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        # Define logging parameters
-        self.log_wandb = log_wandb
-        self.print_freq = print_freq
 
     def forward(self, x : torch.Tensor) -> torch.Tensor:
         """
@@ -165,68 +162,11 @@ class Baseline(MetaTemplate):
                 )
                 if self.log_wandb: wandb.log({"loss/train": current_loss})
 
-        return avg_loss / len(train_loader) 
-
-    def test_loop(self, test_loader : torch.utils.data.DataLoader, return_std : bool = False) -> (float, float):
-        """
-        [Finetuning] Test the model and log the accuracy.
-
-        Args:
-            test_loader (DataLoader): the test data loader
-            return_std (bool): whether to return the standard deviation
-        
-        Returns:
-            acc_mean (float): the mean accuracy
-            acc_std (float): the standard deviation of the accuracy
-        """
-
-        # Collect the accuracy for each episode
-        acc_all = []
-        iter_num = len(test_loader)
-        for x, y in test_loader:
-
-            # Determine the number of query examples based on the number of support examples
-            # which was defined in the constructor
-            if isinstance(x, list):
-                self.n_query = x[0].size(1) - self.n_support
-            else:
-                self.n_query = x.size(1) - self.n_support
-
-            # Compute the accuracy
-            if self.type == "classification":
-                correct_this, count_this = self.correct(x)
-                acc_all.append(correct_this / count_this * 100)
-            # Compute the pearson correlation
-            else:
-                acc_all.append(self.correlation(x, y))
-
-        # Compute the mean and standard deviation of the accuracy
-        acc_all = np.asarray(acc_all)
-        acc_mean = np.mean(acc_all)
-        acc_std = np.std(acc_all)
-
-        # Print the results
-        if self.type == "classification":
-            print(
-                "%d Accuracy = %4.2f%% +- %4.2f%%"
-                % (iter_num, acc_mean, 1.96 * acc_std / np.sqrt(iter_num))
-            )
-        else:
-            # print correlation
-            print(
-                "%d Correlation = %4.2f +- %4.2f"
-                % (iter_num, acc_mean, 1.96 * acc_std / np.sqrt(iter_num))
-            )
-
-        # Return the mean and (standard deviation) of the accuracy
-        if return_std:
-            return acc_mean, acc_std
-        else:
-            return acc_mean
+        return avg_loss / len(train_loader)
 
     def set_forward(self, x : torch.Tensor, y : torch.Tensor = None) -> torch.Tensor:
         """
-        [Finetuining] Fine-tune the model for the given episode's data
+        [Finetuning] Fine-tune the model for the given episode's data
         and then evaluate the model on the query set.
         
         Args:
@@ -237,13 +177,10 @@ class Baseline(MetaTemplate):
             scores (torch.Tensor): the predictions on the query set
         """
 
-        # Run backbone on the input data and then split 
-        # the output into support and query sets
-        # Shape of z_support: [n_way * n_support, feat_dim]
-        # Shape of z_query: [n_way * n_query, feat_dim]
+        # Run backbone, split data into support and query sets
         z_support, z_query = self.parse_feature(x, is_feature=False)
 
-        # Freese the backbone
+        # Freeze the backbone
         z_support = (
             z_support.contiguous()
             .view(self.n_way * self.n_support, -1)
@@ -259,19 +196,11 @@ class Baseline(MetaTemplate):
 
         # Classification
         if y is None:
-            # Example:
-            # np.repeat([0, 1, 2], 2) --> [0, 0, 1, 1, 2, 2]
-            y_support = torch.from_numpy(np.repeat(range(self.n_way), self.n_support))
-            y_support = Variable(y_support.to(self.device))
+            y_support = self.get_support_labels()
         
         # Regression
         else:  
-            y_support = y[:, : self.n_support]
-            y_support = (
-                y_support.contiguous()
-                .view(self.n_way * self.n_support, -1)
-                .to(self.device)
-            )
+            raise ValueError("Finetuning baseline on regression not supported.")
         
         # Define classifier
         if self.loss_type == "softmax":
@@ -295,31 +224,8 @@ class Baseline(MetaTemplate):
         loss_function = self.loss_fn.to(self.device)
 
         # Finetune the classifier
-        batch_size = 4
-        support_size = self.n_way * self.n_support
-        for _ in range(100):
-            rand_id = np.random.permutation(support_size)
-            for i in range(0, support_size, batch_size):
-                set_optimizer.zero_grad()
-
-                # Select the batch from the support set
-                selected_id = torch.from_numpy(
-                    rand_id[i : min(i + batch_size, support_size)]
-                ).to(self.device)
-
-                # Get the embeddings and labels for the batch
-                z_batch = z_support[selected_id]
-                y_batch = y_support[selected_id]
-
-                # Compute the predictions and loss
-                scores = linear_clf(z_batch)
-                loss = loss_function(scores, y_batch)
-
-                # Backpropagate the loss
-                loss.backward()
-                set_optimizer.step()
-
-        # Compute the final predictions for the query set 
-        scores = linear_clf(z_query)
+        scores = self.adapt(
+            linear_clf, set_optimizer, (z_support, y_support), z_query, loss_function, batch_size=4
+        )
 
         return scores
