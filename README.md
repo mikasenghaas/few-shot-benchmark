@@ -33,7 +33,7 @@ python -m pip install -r requirements.txt
 ### Training
 
 ```bash
-python run.py exp.name={exp_name} method=maml dataset=tabula_muris
+python run.py name={exp_name} method=maml dataset=tabula_muris
 ```
 
 By default, method is set to MAML, and dataset is set to Tabula Muris.
@@ -45,12 +45,12 @@ The training process will automatically evaluate at the end. To only evaluate wi
 running training, use the following:
 
 ```bash
-python run.py exp.name={exp_name} method=maml dataset=tabula_muris mode=test
+python run.py name={exp_name} method=maml dataset=tabula_muris mode=test
 ```
 
 Run `run.py` with the same parameters as the training run, with `mode=test` and it will automatically use the
 best checkpoint (as measured by val ACC) from the most recent training run with that combination of
-exp.name/method/dataset/model. To choose a run conducted at a different time (i.e. not the latest), pass in the timestamp
+name/method/dataset/model. To choose a run conducted at a different time (i.e. not the latest), pass in the timestamp
 in the form `checkpoint.time={yyyymmdd_hhmmss}.` To choose a model from a specific epoch, use `checkpoint.iter=40`. 
 
 ## Datasets
@@ -65,10 +65,10 @@ SetDataset (for the few-shot setting) and create a new config file for the datas
 
 The provided datasets are:
 
-| Dataset      | Task                             | Modality         | Type           | Source                                                                 |
-|--------------|----------------------------------|------------------|----------------|------------------------------------------------------------------------|
-| Tabula Muris | Cell-type prediction             | Gene expression  | Classification | [Cao et al. (2021)](https://arxiv.org/abs/2007.07375)                  |
-| SwissProt    | Protein function prediction      | Protein sequence | Classification | [Uniprot](https://www.uniprot.org/) |
+| Dataset      | Task                        | Modality         | Type           | Source                                                |
+| ------------ | --------------------------- | ---------------- | -------------- | ----------------------------------------------------- |
+| Tabula Muris | Cell-type prediction        | Gene expression  | Classification | [Cao et al. (2021)](https://arxiv.org/abs/2007.07375) |
+| SwissProt    | Protein function prediction | Protein sequence | Classification | [Uniprot](https://www.uniprot.org/)                   |
 
 
 ## Methods
@@ -81,12 +81,12 @@ create a new method config file at `conf/method/{method_name}.yaml` with the poi
 
 The provided methods include:
 
-| Method      | Source                             | 
-|--------------|----------------------------------|
-| Baseline, Baseline++ | [Chen et al. (2019)](https://arxiv.org/pdf/1904.04232.pdf) |
-| ProtoNet | [Snell et al. (2017)](https://proceedings.neurips.cc/paper_files/paper/2017/file/cb8da6767461f2812ae4290eac7cbc42-Paper.pdf) |
-| MatchingNet | [Vinyals et al. (2016)](https://proceedings.neurips.cc/paper/2016/file/90e1357833654983612fb05e3ec9148c-Paper.pdf) |
-| MAML | [Finn et al. (2017)](https://proceedings.mlr.press/v70/finn17a/finn17a.pdf) |
+| Method               | Source                                                                                                                       |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Baseline, Baseline++ | [Chen et al. (2019)](https://arxiv.org/pdf/1904.04232.pdf)                                                                   |
+| ProtoNet             | [Snell et al. (2017)](https://proceedings.neurips.cc/paper_files/paper/2017/file/cb8da6767461f2812ae4290eac7cbc42-Paper.pdf) |
+| MatchingNet          | [Vinyals et al. (2016)](https://proceedings.neurips.cc/paper/2016/file/90e1357833654983612fb05e3ec9148c-Paper.pdf)           |
+| MAML                 | [Finn et al. (2017)](https://proceedings.mlr.press/v70/finn17a/finn17a.pdf)                                                  |
 
 
 ## Models

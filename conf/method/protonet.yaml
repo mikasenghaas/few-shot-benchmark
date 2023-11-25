@@ -1,7 +1,10 @@
+# @package _global_
+
 defaults:
   - meta_base
 
-cls:
-  _target_: methods.protonet.ProtoNet
+method:
+  name: protonet
 
-name: protonet
+  cls:
+    _target_: methods.protonet.ProtoNet

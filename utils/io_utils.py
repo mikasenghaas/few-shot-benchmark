@@ -1,8 +1,10 @@
+"""
+Module containing helper functions to be used in run.py
+"""
 import glob
 import os
 import random
 import logging
-from prettytable import PrettyTable
 
 import numpy as np
 import torch
@@ -151,6 +153,20 @@ def opt_to_dict(opt: torch.optim.Optimizer) -> dict:
     return opt_dict
 
 
+def get_exp_name(cfg: OmegaConf) -> str:
+    """
+    Returns the experiment name to be used for logging and checkpointing.
+    """
+    name = "{}-{} {}-shot {}-way".format(
+        cfg.dataset.name,
+        cfg.method.name,
+        cfg.exp.n_shot,
+        cfg.exp.n_way,
+    )
+
+    return name
+
+
 def hydra_setup() -> None:
     """
     Setup hydra.
@@ -174,8 +190,8 @@ def check_cfg(cfg: OmegaConf) -> None:
     if "name" not in cfg.exp:
         raise ValueError("The 'exp.name' argument is required!")
 
-    if cfg.mode not in ["train", "test"]:
-        raise ValueError(f"Unknown mode: {cfg.mode}")
+    if cfg.exp.mode not in ["train", "test"]:
+        raise ValueError(f"Unknown mode: {cfg.exp.mode}")
 
 
 def get_device(device: str | None = None) -> torch.device:
@@ -198,26 +214,24 @@ def get_device(device: str | None = None) -> torch.device:
     )
 
 
-def flatten_dict(d: dict, parent_key: str = "", sep: str = ".") -> dict:
+def filter_keys(d: dict) -> dict:
     """
-    Flattens a nested dictionary.
+    Recursively filter out all keys starting with "_" for
+    nicer logging.
 
     Args:
         d: dict
-        parent_key: str
-        sep: str
 
     Returns:
-        dict
+        cfg: OmegaConf
     """
-    items = []
-    for k, v in d.items():
-        new_key = f"{parent_key}{sep}{k}" if parent_key else k
-        if isinstance(v, dict):
-            items.extend(flatten_dict(v, new_key, sep=sep).items())
-        else:
-            items.append((new_key, v))
-    return dict(items)
+    if isinstance(d, dict):
+        return {
+            key: filter_keys(value)
+            for key, value in d.items()
+            if not key.startswith("_")
+        }
+    return d
 
 
 def print_cfg(cfg: OmegaConf):
@@ -230,32 +244,13 @@ def print_cfg(cfg: OmegaConf):
     Returns:
         None
     """
-    # Flatten the config dictionary
+    # Turn into dict
     cfg = OmegaConf.to_container(cfg, resolve=True)
-    flat_cfg = flatten_dict(cfg)
 
-    # Keep only relevant keys
-    relevant_keys = [
-        "exp.name",
-        "exp.device",
-        "dataset.name",
-        "method.name",
-        "n_way",
-        "n_shot",
-        "n_query",
-        "method.stop_epoch",
-    ]
-    filtered_flat_cfg = {key: flat_cfg[key] for key in relevant_keys}
+    # Filter out keys starting with "_"
+    cfg = filter_keys(cfg)
 
-    # Create a PrettyTable object
-    table = PrettyTable()
-
-    # Add rows to the table
-    for key, value in filtered_flat_cfg.items():
-        table.add_column(key, [value])
-
-    print(table)
-    print()
+    print(OmegaConf.to_yaml(cfg))
 
 
 def get_logger(name: str, cfg: OmegaConf) -> logging.Logger:

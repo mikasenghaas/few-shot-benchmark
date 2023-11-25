@@ -1,9 +1,14 @@
+# @package _global_
+
 defaults:
   - method_base
 
-stop_epoch: 60
-type: meta
+method:
+  type: meta
 
-cls:
-  n_way: ${n_way}
-  n_support: ${n_shot}
+  cls:
+    n_way: ${exp.n_way}
+    n_support: ${exp.n_shot}
+
+train:
+  stop_epoch: 60

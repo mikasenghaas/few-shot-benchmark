@@ -5,9 +5,10 @@ dataset:
   simple_cls:
 
   set_cls:
-    n_way: ${n_way}
-    n_support: ${n_shot}
-    n_query: ${n_query}
+    n_way: ${exp.n_way}
+    n_support: ${exp.n_shot}
+    n_query: ${exp.n_query}
 
 # What splits to run on evaluation
-eval_split: [ train, val, test ]
+eval:
+  eval_split: [train, val, test]

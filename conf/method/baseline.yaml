@@ -1,17 +1,20 @@
+# @package _global_
+
 defaults:
   - method_base
 
-name: baseline
-type: baseline
+method:
+  name: baseline
+  type: baseline
+  train_batch: 16
 
-cls:
-  _target_: methods.baseline.Baseline
-  type: ${dataset.type}
-  n_way: ${n_way}
-  n_support: ${n_shot}
-  n_classes: ${train_classes}
-  loss: softmax
+  cls:
+    _target_: methods.baseline.Baseline
+    type: ${dataset.type}
+    n_way: ${exp.n_way}
+    n_support: ${exp.n_shot}
+    n_classes: ${dataset.train_classes}
+    loss: softmax
 
-stop_epoch: 40
-train_batch: 16
-
+train:
+  stop_epoch: 40 # Number of epochs to train

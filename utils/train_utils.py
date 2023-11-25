@@ -1,5 +1,5 @@
 """
-Module containting functions for loading datasets and models, and 
+Module containing functions for loading datasets and models, and 
 training and evaluation loops.
 
 Includes:
@@ -26,6 +26,7 @@ from utils.io_utils import (
     model_to_dict,
     opt_to_dict,
     get_model_file,
+    get_exp_name,
 )
 
 
@@ -59,7 +60,7 @@ def initialize_dataset_model(cfg: OmegaConf, device: torch.device):
 
     # Instantiate val dataset
     logger.info("Initializing validation dataset.")
-    match cfg.method.eval_type:
+    match cfg.eval.type:
         case "simple":
             val_dataset = instantiate(
                 cfg.dataset.simple_cls, batch_size=cfg.method.val_batch, mode="val"
@@ -70,10 +71,12 @@ def initialize_dataset_model(cfg: OmegaConf, device: torch.device):
     # Instantiate backbone (For MAML, need to instantiate backbone with fast weight)
     if cfg.method.fast_weight:
         logger.info("Initialise backbone (with fast weight)")
-        backbone = instantiate(cfg.backbone, x_dim=train_dataset.dim, fast_weight=True)
+        backbone = instantiate(
+            cfg.dataset.backbone, x_dim=train_dataset.dim, fast_weight=True
+        )
     else:
         logger.info("Initialise backbone (no fast weight)")
-        backbone = instantiate(cfg.backbone, x_dim=train_dataset.dim)
+        backbone = instantiate(cfg.dataset.backbone, x_dim=train_dataset.dim)
 
     # Instatiante model with backbone
     logger.info("Initialise model")
@@ -85,7 +88,7 @@ def initialize_dataset_model(cfg: OmegaConf, device: torch.device):
     val_loader = val_dataset.get_data_loader(num_workers=0, pin_memory=False)
 
     if cfg.method.name == "maml":
-        cfg.method.stop_epoch *= model.n_task  # maml use multiple tasks in one update
+        cfg.train.stop_epoch *= model.n_task  # maml use multiple tasks in one update
 
     return train_loader, val_loader, model
 
@@ -122,23 +125,14 @@ def train(
     if not os.path.isdir(cp_dir):
         os.makedirs(cp_dir)
 
-    # Create name for W&B run
-    name = "%s-%s-%s %sshot %sway" % (
-        cfg.dataset.name,
-        cfg.model,  # see main.yaml, this setting doesn't change the model, TODO figure out how to change it (changing dataset.backbone._target_ introduces errors)
-        cfg.method.name,
-        cfg.n_shot,
-        cfg.n_way,
-    )
-
     # Initialise W&B run
     logger.info("Initializing W&B")
     wandb.init(
-        project=cfg.wandb.project,
-        entity=cfg.wandb.entity,
-        name=name,
-        config=OmegaConf.to_container(cfg, resolve=True),
+        name=get_exp_name(cfg),
         group=cfg.exp.name,
+        entity=cfg.wandb.entity,
+        project=cfg.wandb.project,
+        config=OmegaConf.to_container(cfg, resolve=True),
         settings=wandb.Settings(start_method="thread"),
         mode=cfg.wandb.mode,
     )
@@ -149,12 +143,12 @@ def train(
         resume_file = get_resume_file(cp_dir)
         if resume_file is not None:
             tmp = torch.load(resume_file)
-            cfg.method.start_epoch = tmp["epoch"] + 1
+            cfg.train.start_epoch = tmp["epoch"] + 1
             model.load_state_dict(tmp["state"])
 
     # Instantiate optimizer
-    logger.info(f"Initialise {cfg.optimizer} with lr {cfg.lr}")
-    optimizer = instantiate(cfg.optimizer_cls, params=model.parameters())
+    logger.info(f"Initialise Adam with lr {cfg.train.lr}")
+    optimizer = torch.optim.Adam(model.parameters(), lr=cfg.train.lr)
 
     # Log model and optimizer details to W&B
     logger.info("Log model and optimiser details to W&B")
@@ -164,13 +158,13 @@ def train(
     # Training loop
     max_acc = -1
     logger.info("Start training")
-    for epoch in range(cfg.method.start_epoch, cfg.method.stop_epoch):
+    for epoch in range(cfg.train.start_epoch, cfg.train.stop_epoch):
         wandb.log({"epoch": epoch})
         model.train()
         model.train_loop(epoch, train_loader, optimizer)
 
         # Validation loop on every val_freq or last epoch
-        if epoch % cfg.exp.val_freq == 0 or epoch == cfg.method.stop_epoch - 1:
+        if epoch % cfg.exp.val_freq == 0 or epoch == cfg.train.stop_epoch - 1:
             model.eval()
             acc = model.test_loop(val_loader)
             wandb.log({"acc/val": acc})
@@ -182,7 +176,7 @@ def train(
                 torch.save({"epoch": epoch, "state": model.state_dict()}, outfile)
 
         # Save model on every save_freq or last epoch
-        if epoch % cfg.exp.save_freq == 0 or epoch == cfg.method.stop_epoch - 1:
+        if epoch % cfg.save_freq == 0 or epoch == cfg.train.stop_epoch - 1:
             logger.info(f"Save model to {cp_dir}")
             outfile = os.path.join(cp_dir, "{:d}.tar".format(epoch))
             torch.save({"epoch": epoch, "state": model.state_dict()}, outfile)
@@ -236,11 +230,13 @@ def test(cfg: OmegaConf, model: nn.Module, split: str):
 
     # Test loop
     logger.info("Starting test loop")
-    match cfg.method.eval_type:
+    match cfg.eval.type:
         case "simple":
             acc_all = []
 
-            num_iters = math.ceil(cfg.iter_num / len(test_dataset.get_data_loader()))
+            num_iters = math.ceil(
+                cfg.train.iter_num / len(test_dataset.get_data_loader())
+            )
             cfg.iter_num = num_iters * len(test_dataset.get_data_loader())
             # print("num_iters", num_iters)
             for i in range(num_iters):
@@ -257,22 +253,15 @@ def test(cfg: OmegaConf, model: nn.Module, split: str):
     logger.info(f"Write results to {path}")
     with open(path, "a") as f:
         timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-        exp_setting = "%s-%s-%s-%s %sshot %sway" % (
-            cfg.dataset.name,
-            split,
-            cfg.model,
-            cfg.method.name,
-            cfg.n_shot,
-            cfg.n_way,
-        )
+        exp_name = get_exp_name(cfg)
 
         acc_str = "%4.2f%% +- %4.2f%%" % (
             acc_mean,
-            1.96 * acc_std / np.sqrt(cfg.iter_num),
+            1.96 * acc_std / np.sqrt(cfg.train.iter_num),
         )
         f.write(
             "Time: %s, Setting: %s, Acc: %s, Model: %s \n"
-            % (timestamp, exp_setting, acc_str, model_file_path)
+            % (timestamp, exp_name, acc_str, model_file_path)
         )
 
     return acc_mean, acc_std

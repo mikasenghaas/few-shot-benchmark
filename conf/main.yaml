@@ -3,31 +3,27 @@ defaults:
   - dataset: tabula_muris
   - method: baseline_pp
 
-model: ResNet18 # Which backbone to use (TODO: Doesn't seem to change, as defined in dataset/*.yaml)
-n_way: 5 # Number of classes to distinguish in few-shot learning
-n_shot: 5 # Number of support samples per class to train on
-n_query: 5 # Number of query samples per class to evaluate on
-
-mode: train # Whether to train or test a model
-iter_num: 600 # Number of epochs to train
-
 exp:
   name: ??? # Experiment name
+  mode: train # Whether to also train a model or just test
+  n_way: 5 # Number of classes to distinguish in few-shot learning
+  n_shot: 5 # Number of support samples per class to train on
+  n_query: 5 # Number of query samples per class to evaluate on
   save_freq: 10 # Save the model state every save_freq epochs
   val_freq: 1 # Compute and print validation performance every val_freq epochs
   resume: false # Whether to resume training from a checkpoint
-  seed: 42 # Seed to use
   device: "cpu" # Device to use
   log_level: "INFO" # Set logging level
+  seed: 42 # Seed to use
 
-optimizer: Adam # Optimiser to use
-lr: 0.001 # Learning rate to use
-optimizer_cls: # Optimiser instantiation
-  _target_: torch.optim.${optimizer}
-  lr: ${lr}
+train:
+  iter_num: 600 # Number of episodes to train few-shot methods (no effect)
+  lr: 0.001 # Learning rate to use
+
+eval:
 
 checkpoint:
-  dir: checkpoints/${exp.name}/${dataset.name}/${method.name}_${model} # Directory for checkpoint
+  dir: checkpoints/${exp.name}/${dataset.name}/${method.name} # Directory for checkpoint
   test_iter: best_model # Use best_model for testing
   time: latest # Use latest model
 
