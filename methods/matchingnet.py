@@ -33,7 +33,7 @@ class MatchingNet(MetaTemplate):
         # the weighted sum of the support set embeddings for each query embedding
         self.FCE = FullyContextualEmbedding(self.feat_dim)
         self.relu = nn.ReLU()
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax(dim=1)
 
         # Define the Encode of the support set
         self.G_encoder = nn.LSTM(
