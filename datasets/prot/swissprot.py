@@ -18,6 +18,8 @@ from datasets.prot.utils import (
     encodings,
 )
 
+from utils.io_utils import get_logger
+
 EMB_PATH = "embeddings"
 EMB_LAYER = 33
 PROTDIM = 1280
@@ -73,15 +75,15 @@ class SPDataset(FewShotDataset, ABC):
         """
         # Load all samples from the data directory
         ic_str = "_ic" if use_ic_selection else "_lvl"
-        processed_path = os.path.join(self.data_dir, "processed", f"swissprot{ic_str}.pkl")
+        processed_path = os.path.join(
+            self.data_dir, "processed", f"swissprot{ic_str}.pkl"
+        )
         os.makedirs(os.path.dirname(processed_path), exist_ok=True)
         if not os.path.exists(processed_path):
             print("Did not find processed data. Processing SwissProt data now...")
             if use_ic_selection:
                 print("NB: Using IC label selection for each entry!")
-                samples = get_samples_using_ic(
-                    root=self.data_dir, level=level 
-                )
+                samples = get_samples_using_ic(root=self.data_dir, level=level)
             else:
                 samples = get_samples(root=self.data_dir)
             pickle.dump(samples, open(processed_path, "wb"))
@@ -96,7 +98,7 @@ class SPDataset(FewShotDataset, ABC):
         # Subset the data
         if subset != 1.0:
             np.random.seed(seed)
-            subset_size = len(samples) * subset
+            subset_size = int(len(samples) * subset)
             random_indices = np.random.choice(
                 len(samples), size=subset_size, replace=False
             )
@@ -141,9 +143,12 @@ class SPSimpleDataset(SPDataset):
 
         # Loads the data and target encoding mapping
         self.samples = self.load_swissprot(
-            mode=mode, min_samples=min_samples, subset=subset, use_ic_selection=use_ic_selection
+            mode=mode,
+            min_samples=min_samples,
+            subset=subset,
+            use_ic_selection=use_ic_selection,
         )
-        self.trg2idx = encodings(self.data_dir, is_ic = use_ic_selection)
+        self.trg2idx = encodings(self.data_dir, is_ic=use_ic_selection)
 
         # Save parameters
         self.batch_size = batch_size
@@ -203,6 +208,7 @@ class SPSimpleDataset(SPDataset):
             shuffle=shuffle,
             num_workers=num_workers,
             pin_memory=pin_memory,
+            drop_last=True,
         )
         data_loader = DataLoader(self, **data_loader_params)
 
@@ -248,10 +254,15 @@ class SPSetDataset(SPDataset):
         min_samples = n_support + n_query
 
         # Save encoding
-        self.trg2idx = encodings(self.data_dir, is_ic = use_ic_selection)
+        self.trg2idx = encodings(self.data_dir, is_ic=use_ic_selection)
 
         # Load all samples
-        samples = self.load_swissprot(mode=mode, min_samples=min_samples, subset=subset, use_ic_selection=use_ic_selection)
+        samples = self.load_swissprot(
+            mode=mode,
+            min_samples=min_samples,
+            subset=subset,
+            use_ic_selection=use_ic_selection,
+        )
         self.annotations = get_ids(samples)
 
         # Create a list of sub-datasets, one for each class in the dataset
@@ -321,7 +332,9 @@ class SPSetDataset(SPDataset):
         """
         sampler = EpisodicBatchSampler(len(self), self.n_way, self.n_episode)
         data_loader_params = dict(
-            batch_sampler=sampler, num_workers=num_workers, pin_memory=pin_memory
+            batch_sampler=sampler,
+            num_workers=num_workers,
+            pin_memory=pin_memory,
         )
         data_loader = torch.utils.data.DataLoader(self, **data_loader_params)
         return data_loader

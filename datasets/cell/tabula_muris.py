@@ -102,6 +102,13 @@ class TMDataset(FewShotDataset, ABC):
         tissue_filter = self.data.obs["tissue"].isin(tissues)
         self.data = self.data[tissue_filter]
 
+        # Subset the data
+        subset_size = int(len(self.data) * subset)
+        random_indices = np.random.choice(
+            self.data.shape[0], size=subset_size, replace=False
+        )
+        self.data = self.data[random_indices, :].copy()
+
         # Filter out classes with less than min_samples (typically set to k-shot)
         filtered_index = (
             self.data.obs.groupby(["label"])
@@ -109,13 +116,6 @@ class TMDataset(FewShotDataset, ABC):
             .reset_index()["index"]
         )
         self.data = self.data[filtered_index]
-
-        # Subset the data
-        subset_size = int(len(self.data) * subset)
-        random_indices = np.random.choice(
-            self.data.shape[0], size=subset_size, replace=False
-        )
-        self.data = self.data[random_indices, :].copy()
 
         # Convert features and targets to numpy arrays
         samples = self.data.X
@@ -209,6 +209,7 @@ class TMSimpleDataset(TMDataset):
             shuffle=shuffle,
             num_workers=num_workers,
             pin_memory=pin_memory,  # For GPU: num_workers=4, pin_memory=True
+            drop_last=True,
         )
         data_loader = DataLoader(self, **data_loader_params)
 
@@ -322,7 +323,9 @@ class TMSetDataset(TMDataset):
         """
         sampler = EpisodicBatchSampler(len(self), self.n_way, self.n_episode)
         data_loader_params = dict(
-            batch_sampler=sampler, num_workers=num_workers, pin_memory=pin_memory
+            batch_sampler=sampler,
+            num_workers=num_workers,
+            pin_memory=pin_memory,
         )
         data_loader = DataLoader(self, **data_loader_params)
         return data_loader
