@@ -142,10 +142,10 @@ class Baseline(MetaTemplate):
         avg_loss = 0
 
         # Train loop
-        batches = len(train_loader)
-        pbar = tqdm(enumerate(train_loader), total=batches)
+        num_batches = len(train_loader)
+        pbar = self.get_progress_bar(enumerate(train_loader), total=num_batches)
         pbar.set_description(
-            f"Epoch {epoch:03d} | Batch/ Episodes 000/{batches:03d} | 0.0000"
+            f"Epoch {epoch:03d} | Batch/ Episodes 000/{num_batches:03d} | 0.0000"
         )
         for i, (x, y) in pbar:
             # Forward the data through the model and compute the loss
@@ -160,7 +160,7 @@ class Baseline(MetaTemplate):
             avg_loss = avg_loss + loss.item()
 
             # Print the loss
-            self.log_training_progress(pbar, epoch, i, batches, avg_loss)
+            self.log_training_progress(pbar, epoch, i, num_batches, avg_loss)
 
         return avg_loss / len(train_loader)
 

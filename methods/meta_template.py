@@ -1,7 +1,8 @@
 from abc import abstractmethod
 from abc import ABC
-from typing import Union, List, Tuple
+from typing import Iterable, Union, List, Tuple
 from tqdm import tqdm
+import shutil
 
 import numpy as np
 import torch
@@ -20,7 +21,7 @@ class MetaTemplate(nn.Module, ABC):
         n_support: int,
         change_way: bool = True,
         log_wandb: bool = True,
-        print_freq: int = 10,
+        print_freq: int = 1,
         type: str = "classification",
     ):
         """
@@ -188,6 +189,24 @@ class MetaTemplate(nn.Module, ABC):
         else:
             self.n_way = x.size(0)
 
+    def get_progress_bar(
+        self,
+        iterable: Iterable,
+        total: int | None = None,
+    ) -> tqdm:
+        terminal_width = shutil.get_terminal_size().columns
+        description_width = max(terminal_width - 30 - 20, 0)
+
+        return tqdm(
+            iterable,
+            total=total,
+            bar_format="{desc:"
+            + str(description_width)
+            + "}{percentage:3.0f}%|{bar:"
+            + str(30)
+            + "}| {n_fmt}/{total_fmt}",
+        )
+
     def log_training_progress(self, pbar, epoch: int, i: int, n: int, avg_loss: float):
         """
         [Helper] Log the training progress.
@@ -341,10 +360,10 @@ class MetaTemplate(nn.Module, ABC):
         # Run one epoch of episodic training
         avg_loss = 0
 
-        batches = len(train_loader)
-        pbar = tqdm(enumerate(train_loader), total=batches)
+        num_batches = len(train_loader)
+        pbar = self.get_progress_bar(enumerate(train_loader), total=num_batches)
         pbar.set_description(
-            f"Training: Epoch {epoch:03d} | Batch/ Episodes 000/{batches:03d} | 0.0000"
+            f"Training: Epoch {epoch:03d} | Batch/ Episodes 000/{num_batches:03d} | 0.0000"
         )
         for i, (x, _) in pbar:
             # Set the number of query samples and classes
@@ -362,7 +381,7 @@ class MetaTemplate(nn.Module, ABC):
             avg_loss += loss.item()
 
             # Print the loss
-            self.log_training_progress(pbar, epoch, i, batches, avg_loss)
+            self.log_training_progress(pbar, epoch, i, num_batches, avg_loss)
 
     def test_loop(
         self, test_loader: torch.utils.data.DataLoader, return_std: bool = False
@@ -382,9 +401,10 @@ class MetaTemplate(nn.Module, ABC):
 
         # Collect the accuracy for each episode
         evals = []
-        batches = len(test_loader)
-        pbar = tqdm(enumerate(test_loader), total=batches)
-        pbar.set_description(f"Testing: Batch/ Episodes 000/{batches:03d} | 0.0000")
+        num_batches = len(test_loader)
+        pbar = self.get_progress_bar(enumerate(test_loader), total=num_batches)
+        pbar.set_description(f"Testing: Batch/ Episodes 000/{num_batches:03d} | 0.0000")
+        total_correct, total_preds = 0, 0
         for i, data in pbar:
             # Parse the input according to the task type
             if self.type == "classification":
@@ -399,15 +419,18 @@ class MetaTemplate(nn.Module, ABC):
 
             # Compute the accuracy
             if self.type == "classification":
-                total_correct, total_preds = self.correct(x)
-                evals.append([total_correct, total_preds])
+                correct, preds = self.correct(x)
+                evals.append([correct, preds])
+
+                total_correct += correct
+                total_preds += preds
 
             # Compute the pearson correlation
             else:
                 raise NotImplementedError("Regression not implemented yet")
 
             pbar.set_description(
-                f"Testing: Batch/ Episodes {i:03d}/{batches:03d} | {total_correct}/{total_preds}"
+                f"Evaluating: Batch/ Episodes {i:03d}/{num_batches:03d} | Running Acc. {(100 * total_correct / total_preds):.2f}%"
             )
 
         # Compute the mean and standard deviation of the metric
