@@ -9,6 +9,10 @@ dataset:
     n_support: ${exp.n_shot}
     n_query: ${exp.n_query}
 
+  loader:
+    num_workers: 4 # Number of processes to use for data loader
+    pin_memory: true # Use with GPU
+
 # What splits to run on evaluation
 eval:
-  eval_split: [train, val, test]
+  splits: [train, val, test]

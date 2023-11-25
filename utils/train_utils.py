@@ -18,7 +18,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import wandb
 from hydra.utils import instantiate
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
 
 from utils.io_utils import (
     get_logger,
@@ -30,7 +30,7 @@ from utils.io_utils import (
 )
 
 
-def initialize_dataset_model(cfg: OmegaConf, device: torch.device):
+def initialize_dataset_model(cfg: DictConfig, device: torch.device):
     """
     Initialise dataset and model based on config file and returns
     the data loaders and model.
@@ -84,8 +84,14 @@ def initialize_dataset_model(cfg: OmegaConf, device: torch.device):
     model = model.to(device)
 
     # Get train and val data loaders
-    train_loader = train_dataset.get_data_loader(num_workers=0, pin_memory=False)
-    val_loader = val_dataset.get_data_loader(num_workers=0, pin_memory=False)
+    train_loader = train_dataset.get_data_loader(
+        num_workers=cfg.dataset.loader.num_workers,
+        pin_memory=cfg.dataset.loader.pin_memory,
+    )
+    val_loader = val_dataset.get_data_loader(
+        num_workers=cfg.dataset.loader.num_workers,
+        pin_memory=cfg.dataset.loader.pin_memory,
+    )
 
     if cfg.method.name == "maml":
         cfg.train.stop_epoch *= model.n_task  # maml use multiple tasks in one update
@@ -97,7 +103,7 @@ def train(
     train_loader: DataLoader,
     val_loader: DataLoader,
     model: nn.Module,
-    cfg: OmegaConf,
+    cfg: DictConfig,
 ):
     """
     Full training loop over epochs. Saves model checkpoints and logs to wandb.
@@ -176,7 +182,7 @@ def train(
                 torch.save({"epoch": epoch, "state": model.state_dict()}, outfile)
 
         # Save model on every save_freq or last epoch
-        if epoch % cfg.save_freq == 0 or epoch == cfg.train.stop_epoch - 1:
+        if epoch % cfg.exp.save_freq == 0 or epoch == cfg.train.stop_epoch - 1:
             logger.info(f"Save model to {cp_dir}")
             outfile = os.path.join(cp_dir, "{:d}.tar".format(epoch))
             torch.save({"epoch": epoch, "state": model.state_dict()}, outfile)
@@ -184,7 +190,7 @@ def train(
     return model
 
 
-def test(cfg: OmegaConf, model: nn.Module, split: str):
+def test(cfg: DictConfig, model: nn.Module, split: str):
     """
     Test loop. Loads model from checkpoint and evaluates on test data.
     Writes results to file in checkpoint directory.
@@ -212,15 +218,18 @@ def test(cfg: OmegaConf, model: nn.Module, split: str):
             )
         case _:
             logger.info(
-                f"Initialise {split} {cfg.dataset.name} dataset with {cfg.iter_num} episodes"
+                f"Initialise {split} {cfg.dataset.name} dataset with {cfg.train.iter_num} episodes"
             )
             test_dataset = instantiate(
-                cfg.dataset.set_cls, n_episode=cfg.iter_num, mode=split
+                cfg.dataset.set_cls, n_episode=cfg.train.iter_num, mode=split
             )
 
     # Get the test loader
     logger.info("Get test loader")
-    test_loader = test_dataset.get_data_loader(num_workers=0, pin_memory=False)
+    test_loader = test_dataset.get_data_loader(
+        num_workers=cfg.dataset.loader.num_workers,
+        pin_memory=cfg.dataset.loader.pin_memory,
+    )
 
     # Load model from checkpoint (either latest or specified)
     logger.info("Load model from checkpoint")
@@ -237,7 +246,7 @@ def test(cfg: OmegaConf, model: nn.Module, split: str):
             num_iters = math.ceil(
                 cfg.train.iter_num / len(test_dataset.get_data_loader())
             )
-            cfg.iter_num = num_iters * len(test_dataset.get_data_loader())
+            cfg.train_iter_num = num_iters * len(test_dataset.get_data_loader())
             # print("num_iters", num_iters)
             for i in range(num_iters):
                 acc_mean, acc_std = model.test_loop(test_loader, return_std=True)
