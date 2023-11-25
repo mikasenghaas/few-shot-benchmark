@@ -2,6 +2,7 @@ import torch
 from torch import nn as nn
 
 from backbones.blocks import full_block, full_block_fw
+from methods.self_optimal_transport import SOT
 
 
 class FCNet(nn.Module):
