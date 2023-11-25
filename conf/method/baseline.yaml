@@ -6,7 +6,6 @@ defaults:
 method:
   name: baseline
   type: baseline
-  train_batch: 16
 
   cls:
     _target_: methods.baseline.Baseline
@@ -18,3 +17,4 @@ method:
 
 train:
   stop_epoch: 40 # Number of epochs to train
+  train_batch: 16
