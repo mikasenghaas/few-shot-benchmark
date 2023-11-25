@@ -1,8 +1,9 @@
 defaults:
   - dataset: tabula_muris
-  - method: baseline_pp
+  - method: maml
+  - _self_
 
-model: ResNet18 # i think this doesn't change anything, backbone is changed at dataset/*.yaml
+model: maml # i think this doesn't change anything, backbone is changed at dataset/*.yaml
 n_way: 5
 n_shot: 5
 n_query: 5
@@ -28,8 +29,8 @@ checkpoint:
   time: latest
 
 wandb:
-  project: "metameta-learners"
-  entity: "barlaada"
+  project: "few-shot-benchmark"
+  entity: "metameta-learners"
   mode: "online" # Can set to offline, disabled
 
 iter_num: 600
