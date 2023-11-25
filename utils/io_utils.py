@@ -264,20 +264,23 @@ def get_logger(name: str, cfg: OmegaConf) -> logging.Logger:
     Returns:
         logger: logging.Logger
     """
-    # Return existing logger if exists
-    level = logging.getLevelName(cfg.exp.log_level)
-
+    # Create or get the logger
     logger = logging.getLogger(name)
+
+    # Set the level
+    level = logging.getLevelName(cfg.exp.log_level)
     logger.setLevel(level)
+
+    # Configure the logger only once
+    logger.handlers.clear()
 
     # Create formatter and add it to the handlers
     formatter = logging.Formatter("[%(levelname)s] (%(name)s.%(funcName)s) %(message)s")
 
-    # Add a console handler if not already present
-    if not logger.hasHandlers():
-        ch = logging.StreamHandler()
-        ch.setFormatter(formatter)
-        logger.addHandler(ch)
+    # Add a console handler
+    ch = logging.StreamHandler()
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
 
     # Avoid propagating to the root logger
     logger.propagate = False

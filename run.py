@@ -1,5 +1,5 @@
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 import wandb
 from prettytable import PrettyTable
 
@@ -36,7 +36,7 @@ def main(cfg: DictConfig):
 
     # Test the model on the specified splits
     results = []
-    for split in cfg.eval.eval_split:
+    for split in cfg.eval.splits:
         logger.info(f"Testing on {split} split.")
         acc_mean, acc_std = test(cfg, model, split)
         results.append([split, acc_mean, acc_std])
@@ -50,7 +50,7 @@ def main(cfg: DictConfig):
         wandb.log({"eval_results": table})
 
     # Display test results in a table
-    logger.info(f"Final test results on {cfg.eval.eval_split} splits:\n")
+    logger.info(f"Final test results on {cfg.eval.splits} splits:\n")
     display_table = PrettyTable(["split", "acc_mean", "acc_std"])
     for row in results:
         display_table.add_row(row)
