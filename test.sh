@@ -8,22 +8,28 @@ Used mostly for debugging and testing.
 '
 
 # Experiment Parameters
-exp_name=local
+exp_name=test
 exp_device=cpu
-exp_val_freq=1 # High to avoid running validation
-exp_save_freq=10 # High to avoid saving too many checkpoints
+exp_val_freq=100 # High to avoid running validation
+exp_save_freq=100 # High to avoid saving too many checkpoints
 exp_log_level=INFO # Low to avoid too many logs
 
 # Dataset Parameters
+dataset_subset=0.5 # No need to load data in parallel
 dataset_loader_num_workers=0 # No need to load data in parallel
 dataset_loader_pin_memory=false # No need to load data in parallel
 
 # Training Parameters
-train_stop_epoch=10 # Train all models for 10 epochs
+train_stop_epoch=1 # Low to avoid running for too long
+
+# Evaluation Parameters
+eval_splits=[test]
+# Logging parameters
+wandb_mode=disabled
 
 # Hyper-parameter grid
-methods=( "matchingnet" "protonet" "maml" )
-datasets=( "tabula_muris" )
+methods=( "baseline" "baseline_pp" "matchingnet" "protonet" "maml" )
+datasets=( "swissprot" "tabula_muris" )
 
 for dataset in "${datasets[@]}"
 do
@@ -37,8 +43,11 @@ do
            exp.val_freq=$exp_val_freq \
            exp.save_freq=$exp_save_freq \
            exp.log_level=$exp_log_level \
+           dataset.subset=$dataset_subset \
            dataset.loader.num_workers=$dataset_loader_num_workers \
            dataset.loader.pin_memory=$dataset_loader_pin_memory \
-           train.stop_epoch=$train_stop_epoch
+           train.stop_epoch=$train_stop_epoch \
+           eval.splits=$eval_splits \
+           wandb.mode=$wandb_mode
     done
 done
