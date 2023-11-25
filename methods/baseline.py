@@ -1,11 +1,8 @@
-import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-import wandb
-from abc import ABC
-from IPython.display import clear_output
+from tqdm import tqdm
 
 from backbones.blocks import distLinear
 from methods.meta_template import MetaTemplate
@@ -25,20 +22,22 @@ class Baseline(MetaTemplate):
         log_wandb (bool): whether to log the results to wandb
         print_freq (int): how often (in terms of # of batches) to print the results
     """
+
     def __init__(
         self,
-        backbone : nn.Module,
-        n_way : int,
-        n_support : int,
-        n_classes : int = 1,
-        loss : str = "softmax",
-        type : str = "classification",
-        **kwargs
+        backbone: nn.Module,
+        n_way: int,
+        n_support: int,
+        n_classes: int = 1,
+        loss: str = "softmax",
+        type: str = "classification",
+        **kwargs,
     ):
-
         # Initialize the the MetaTemplate parent class
         change_way = True
-        super(Baseline, self).__init__(backbone, n_way, n_support, change_way, type=type, **kwargs)
+        super(Baseline, self).__init__(
+            backbone, n_way, n_support, change_way, type=type, **kwargs
+        )
 
         # Define the feature extractor
         self.feature = backbone
@@ -67,7 +66,7 @@ class Baseline(MetaTemplate):
         # Define the device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def forward(self, x : torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         [Pretraining] Forward the data through the backbone.
 
@@ -81,7 +80,7 @@ class Baseline(MetaTemplate):
         # TODO: why list?
         if isinstance(x, list):
             x = [Variable(obj.to(self.device)) for obj in x]
-        
+
         # Turn the input data into a Variable so we can compute the gradient
         else:
             x = Variable(x.to(self.device))
@@ -97,14 +96,14 @@ class Baseline(MetaTemplate):
 
         return scores
 
-    def set_forward_loss(self, x : torch.Tensor, y : torch.Tensor) -> torch.Tensor:
+    def set_forward_loss(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
         [Pretraining] Forward the data through the model and compute the loss.
 
         Args:
             x (torch.Tensor / [torch.Tensor]): the input data
             y (torch.Tensor): the ground truth
-        
+
         Returns:
             loss (torch.Tensor): the loss
         """
@@ -121,7 +120,12 @@ class Baseline(MetaTemplate):
         # Compute the loss and return
         return self.loss_fn(scores, y)
 
-    def train_loop(self, epoch : int, train_loader : torch.utils.data.DataLoader, optimizer : torch.optim.Optimizer) -> float:
+    def train_loop(
+        self,
+        epoch: int,
+        train_loader: torch.utils.data.DataLoader,
+        optimizer: torch.optim.Optimizer,
+    ) -> float:
         """
         [Pretraining] Train the model for one epoch and log the loss.
 
@@ -129,7 +133,7 @@ class Baseline(MetaTemplate):
             epoch (int): the current epoch
             train_loader (DataLoader): the training data loader
             optimizer (Optimizer): the optimizer
-        
+
         Returns:
             avg_loss (float): the average loss over the epoch
         """
@@ -138,7 +142,12 @@ class Baseline(MetaTemplate):
         avg_loss = 0
 
         # Train loop
-        for i, (x, y) in enumerate(train_loader):
+        num_batches = len(train_loader)
+        pbar = self.get_progress_bar(enumerate(train_loader), total=num_batches)
+        pbar.set_description(
+            f"Epoch {epoch:03d} | Batch/ Episodes 000/{num_batches:03d} | 0.0000"
+        )
+        for i, (x, y) in pbar:
             # Forward the data through the model and compute the loss
             optimizer.zero_grad()
             loss = self.set_forward_loss(x, y)
@@ -151,26 +160,18 @@ class Baseline(MetaTemplate):
             avg_loss = avg_loss + loss.item()
 
             # Print the loss
-            if i % self.print_freq == 0:
-                clear_output(wait=True)
-                current_loss = avg_loss / float(i + 1)
-                print(
-                    "ℹ️ Epoch {:d} | Batch {:d}/{:d} | Loss {:f}".format(
-                        epoch, i, len(train_loader), current_loss
-                    )
-                )
-                if self.log_wandb: wandb.log({"loss/train": current_loss})
+            self.log_training_progress(pbar, epoch, i, num_batches, avg_loss)
 
         return avg_loss / len(train_loader)
 
-    def set_forward(self, x : torch.Tensor, y : torch.Tensor = None) -> torch.Tensor:
+    def set_forward(self, x: torch.Tensor, y: torch.Tensor = None) -> torch.Tensor:
         """
         [Finetuning] Fine-tune the model for the given episode's data
         and then evaluate the model on the query set.
-        
+
         Args:
             x (torch.Tensor / [torch.Tensor]): the input data
-            y (torch.Tensor): the ground truth 
+            y (torch.Tensor): the ground truth
 
         Returns:
             scores (torch.Tensor): the predictions on the query set
@@ -196,11 +197,11 @@ class Baseline(MetaTemplate):
         # Classification
         if y is None:
             y_support = self.get_episode_labels(self.n_support, enable_grad=True)
-        
+
         # Regression
-        else:  
+        else:
             raise ValueError("Finetuning baseline on regression not supported.")
-        
+
         # Define classifier
         if self.loss_type == "softmax":
             linear_clf = nn.Linear(self.feat_dim, self.n_way)
@@ -224,7 +225,12 @@ class Baseline(MetaTemplate):
 
         # Finetune the classifier
         scores = self.adapt(
-            linear_clf, set_optimizer, (z_support, y_support), z_query, loss_function, batch_size=4
+            linear_clf,
+            set_optimizer,
+            (z_support, y_support),
+            z_query,
+            loss_function,
+            batch_size=4,
         )
 
         return scores

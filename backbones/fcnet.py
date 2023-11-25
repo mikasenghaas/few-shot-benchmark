@@ -7,7 +7,17 @@ from backbones.blocks import full_block, full_block_fw
 class FCNet(nn.Module):
     fast_weight = False  # Default
 
-    def __init__(self, x_dim, layer_dim=[64, 64], dropout=0.2, fast_weight=False):
+    def __init__(self, x_dim: int, layer_dim: list = [64, 64], dropout: float = 0.2, fast_weight: bool = False,
+                 **kwargs):
+        """
+        Fully connected network for feature extraction. The network is composed of a series of fully connected layers.
+
+        Args:
+            x_dim: input dimension
+            layer_dim: list of hidden dimensions
+            dropout: dropout rate
+            fast_weight: whether to use fast weight (temporary parameters used to update initial parameters in MAML)
+        """
         super(FCNet, self).__init__()
         self.fast_weight = fast_weight
 
@@ -29,7 +39,7 @@ class FCNet(nn.Module):
 
 
 class EnFCNet(nn.Module):
-    def __init__(self, x_dim, go_mask, hid_dim=64, z_dim=64, dropout=0.2):
+    def __init__(self, x_dim, go_mask, hid_dim=64, z_dim=64, dropout=0.2, **kwargs):
         super(EnFCNet, self).__init__()
 
         # self.go_mask = generate_simple_go_mask(x_dim=x_dim, num_GOs=3) # for testing

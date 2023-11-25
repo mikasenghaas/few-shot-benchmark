@@ -13,9 +13,15 @@ from backbones.blocks import (
 class ResNet(nn.Module):
     maml = False  # Default
 
-    def __init__(self, block, list_of_num_layers, list_of_out_dims, flatten=True):
-        # list_of_num_layers specifies number of layers in each stage
-        # list_of_out_dims specifies number of output channel for each stage
+    def __init__(self, block, list_of_num_layers, list_of_out_dims, flatten=True, **kwargs):
+        """
+        ResNet for feature extraction.
+
+        Args:
+            block: block type, SimpleBlock or BottleneckBlock, see: backbones/blocks.py
+            list_of_num_layers: number of layers in each stage
+            list_of_out_dims: number of output channel for each stage
+        """
         super(ResNet, self).__init__()
         assert len(list_of_num_layers) == 4, "Can have only four stages"
         if self.maml:
@@ -56,21 +62,21 @@ class ResNet(nn.Module):
         return out
 
 
-def ResNet10(flatten=True):
-    return ResNet(SimpleBlock, [1, 1, 1, 1], [64, 128, 256, 512], flatten)
+def ResNet10(flatten=True, **kwargs):
+    return ResNet(SimpleBlock, [1, 1, 1, 1], [64, 128, 256, 512], flatten, **kwargs)
 
 
-def ResNet18(flatten=True):
-    return ResNet(SimpleBlock, [2, 2, 2, 2], [64, 128, 256, 512], flatten)
+def ResNet18(flatten=True, **kwargs):
+    return ResNet(SimpleBlock, [2, 2, 2, 2], [64, 128, 256, 512], flatten, **kwargs)
 
 
-def ResNet34(flatten=True):
-    return ResNet(SimpleBlock, [3, 4, 6, 3], [64, 128, 256, 512], flatten)
+def ResNet34(flatten=True, **kwargs):
+    return ResNet(SimpleBlock, [3, 4, 6, 3], [64, 128, 256, 512], flatten, **kwargs)
 
 
-def ResNet50(flatten=True):
-    return ResNet(BottleneckBlock, [3, 4, 6, 3], [256, 512, 1024, 2048], flatten)
+def ResNet50(flatten=True, **kwargs):
+    return ResNet(BottleneckBlock, [3, 4, 6, 3], [256, 512, 1024, 2048], flatten, **kwargs)
 
 
-def ResNet101(flatten=True):
-    return ResNet(BottleneckBlock, [3, 4, 23, 3], [256, 512, 1024, 2048], flatten)
+def ResNet101(flatten=True, **kwargs):
+    return ResNet(BottleneckBlock, [3, 4, 23, 3], [256, 512, 1024, 2048], flatten, **kwargs)

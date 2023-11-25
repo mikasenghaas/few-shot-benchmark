@@ -248,10 +248,12 @@ class TMSetDataset(TMDataset):
         self.initialize_data_dir(root, download_flag=True)
 
         # Load the data
-        samples, targets = self.load_tabular_muris(mode, min_samples, subset=subset)
+        self.samples_all, self.targets_all = self.load_tabular_muris(
+            mode, min_samples, subset=subset
+        )
 
         # Get the unique cell labels
-        self.unique_targets = np.unique(targets)
+        self.unique_targets = np.unique(self.targets_all)
 
         # Initialise empty list of data loader for each class
         self.sub_dataloader = []
@@ -264,7 +266,7 @@ class TMSetDataset(TMDataset):
 
         # Iterate over all unique classes to create a sub-dataset and data loader for each class
         for target in self.unique_targets:
-            sub_samples = samples[targets == target, ...]
+            sub_samples = self.samples_all[self.targets_all == target, ...]
             sub_dataset = FewShotSubDataset(sub_samples, target)
             sub_dataloader = DataLoader(sub_dataset, **sub_data_loader_params)
             self.sub_dataloader.append(sub_dataloader)

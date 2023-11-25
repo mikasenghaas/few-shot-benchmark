@@ -15,23 +15,50 @@ from torch_geometric.utils import (
 )
 from torch_geometric.nn.conv import MessagePassing
 
+
 # Basic ResNet model
 
 
+# %%
 def init_layer(L):
+    """
+    Initialize a Conv1d, Conv2d or BatchNorm2d layer.
+
+    :param L: Layer to be initialized. `L.kernel_size` is expected to be at least two-dimensional.
+
+    Based on the layer type, the initialization is done as follows:
+
+    - **Conv1d/Conv2d**: Initialize with Kaiming He normal initialization
+    - **BatchNorm2d**: Initialize with ones for weights and zeros for biases.
+    """
+    if isinstance(L, nn.BatchNorm2d):
+        L.weight.data.fill_(1)
+        L.bias.data.fill_(0)
+        return
+
+    assert len(L.kernel_size) >= 2, "Expected kernel size to be at least 2D"
+
     # Initialization using fan-in
     if isinstance(L, nn.Conv2d):
         n = L.kernel_size[0] * L.kernel_size[1] * L.out_channels
         L.weight.data.normal_(0, math.sqrt(2.0 / float(n)))
+        return
+
     if isinstance(L, nn.Conv1d):
         n = L.kernel_size[0] * L.kernel_size[1] * L.out_channels
         L.weight.data.normal_(0, math.sqrt(2.0 / float(n)))
-    elif isinstance(L, nn.BatchNorm2d):
-        L.weight.data.fill_(1)
-        L.bias.data.fill_(0)
+        return
 
 
 class distLinear(nn.Module):
+    """
+    This class implements a specialized linear layer where both inputs and weights are normalized. The normalization ensures that the dot product between them computes a **cosine similarity**, scaled by `self.scale_factor`. Cosine similarity for two vectors :math:`A` and :math:`B` is defined as:
+
+    :math:`similarity = A \\cdot B / (||A|| * ||B||)`
+
+    where :math:`||A||` is the L2 norm of :math:`A`.
+    """
+
     def __init__(self, indim, outdim):
         super(distLinear, self).__init__()
         self.L = nn.Linear(indim, outdim, bias=False)
@@ -50,14 +77,15 @@ class distLinear(nn.Module):
 
     def forward(self, x):
         x_norm = torch.norm(x, p=2, dim=1).unsqueeze(1).expand_as(x)
-        x_normalized = x.div(x_norm + 0.00001)
+        x_normalized = x.div(x_norm + 0.00001)  # divides by norm of row vectors of x, handles 0 norm cases
         if not self.class_wise_learnable_norm:
             L_norm = (
-                torch.norm(self.L.weight.data, p=2, dim=1)
+                torch.norm(self.L.weight.data, p=2, dim=1)  # compute the norm of each row vector of L.weight.data
                 .unsqueeze(1)
                 .expand_as(self.L.weight.data)
             )
-            self.L.weight.data = self.L.weight.data.div(L_norm + 0.00001)
+            self.L.weight.data = self.L.weight.data.div(
+                L_norm + 0.00001)  # normalize the row vectors of L.weight.data same as with x_normalized
         cos_dist = self.L(
             x_normalized
         )  # matrix product by forward function, but when using WeightNorm, this also multiply the cosine distance by a class-wise learnable norm, see the issue#4&8 in the github
@@ -67,6 +95,10 @@ class distLinear(nn.Module):
 
 
 class Flatten(nn.Module):
+    """
+    This class flattens the input tensor to 2D, where the batch dimension is preserved while the other dimensions are flattened.
+    """
+
     def __init__(self):
         super(Flatten, self).__init__()
 
@@ -74,26 +106,40 @@ class Flatten(nn.Module):
         return x.view(x.size(0), -1)
 
 
-class Linear_fw(nn.Linear):  # used in MAML to forward input with fast weight
-    def __init__(self, in_features, out_features):
+class Linear_fw(nn.Linear):
+    def __init__(self, in_features: int, out_features: int):
+        """
+        This class implements a linear layer where the weights can be replaced by a fast weight during forward pass.
+        This is used in inner loop of MAML to forward input with fast weight (temporary parameters which will be used to update the original parameters).
+
+        Args:
+            in_features: Number of input features
+            out_features: Number of output features
+
+        """
         super(Linear_fw, self).__init__(in_features, out_features)
         self.weight.fast = None  # Lazy hack to add fast weight link
         self.bias.fast = None
 
     def forward(self, x):
+        """
+        Uses fast weights if they are defined. Otherwise, uses the normal nn.Linear layer.
+        """
         if self.weight.fast is not None and self.bias.fast is not None:
             out = F.linear(
                 x, self.weight.fast, self.bias.fast
             )  # weight.fast (fast weight) is the temporaily adapted weight
         else:
-            out = super(Linear_fw, self).forward(x)
+            out = super(Linear_fw, self).forward(x)  # use the normal linear layer
         return out
 
 
-class Conv1d_fw(nn.Conv1d):  # used in MAML to forward input with fast weight
-    def __init__(
-        self, in_channels, out_channels, kernel_size, stride=1, padding=0, bias=True
-    ):
+class Conv1d_fw(nn.Conv1d):
+    def __init__(self, in_channels: int, out_channels: int, kernel_size, stride=1, padding=0, bias: bool = True):
+        """
+        This class implements a 1D convolutional layer where the weights can be replaced by a fast weight during forward pass.
+        This is used in inner loop of MAML to forward input with fast weight (temporary parameters which will be used to update the original parameters).
+        """
         super(Conv1d_fw, self).__init__(
             in_channels,
             out_channels,
@@ -107,6 +153,9 @@ class Conv1d_fw(nn.Conv1d):  # used in MAML to forward input with fast weight
             self.bias.fast = None
 
     def forward(self, x):
+        """
+        Uses fast weights if they are defined. Otherwise, uses the normal nn.Conv1d layer.
+        """
         if self.bias is None:
             if self.weight.fast is not None:
                 out = F.conv1d(
@@ -129,10 +178,12 @@ class Conv1d_fw(nn.Conv1d):  # used in MAML to forward input with fast weight
         return out
 
 
-class Conv2d_fw(nn.Conv2d):  # used in MAML to forward input with fast weight
-    def __init__(
-        self, in_channels, out_channels, kernel_size, stride=1, padding=0, bias=True
-    ):
+class Conv2d_fw(nn.Conv2d):
+    def __init__(self, in_channels: int, out_channels: int, kernel_size, stride=1, padding=0, bias: bool = True):
+        """
+        This class implements a 2D convolutional layer where the weights can be replaced by a fast weight during forward pass.
+        This is used in inner loop of MAML to forward input with fast weight (temporary parameters which will be used to update the original parameters).
+        """
         super(Conv2d_fw, self).__init__(
             in_channels,
             out_channels,
@@ -148,6 +199,9 @@ class Conv2d_fw(nn.Conv2d):  # used in MAML to forward input with fast weight
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def forward(self, x):
+        """
+        Uses fast weights if they are defined. Otherwise, uses the normal nn.Conv2d layer.
+        """
         if self.bias is None:
             if self.weight.fast is not None:
                 out = F.conv2d(
@@ -170,13 +224,20 @@ class Conv2d_fw(nn.Conv2d):  # used in MAML to forward input with fast weight
         return out
 
 
-class BatchNorm2d_fw(nn.BatchNorm2d):  # used in MAML to forward input with fast weight
-    def __init__(self, num_features):
+class BatchNorm2d_fw(nn.BatchNorm2d):
+    def __init__(self, num_features: int):
+        """
+        This class implements a batch normalization layer where the weights can be replaced by a fast weight during forward pass.
+        This is used in inner loop of MAML to forward input with fast weight (temporary parameters which will be used to update the original parameters).
+        """
         super(BatchNorm2d_fw, self).__init__(num_features)
         self.weight.fast = None
         self.bias.fast = None
 
     def forward(self, x):
+        """
+        Uses fast weights if they are defined. Otherwise, uses the normal nn.BatchNorm2d layer.
+        """
         running_mean = torch.zeros(x.data.size()[1]).to(self.device)
         running_var = torch.ones(x.data.size()[1]).to(self.device)
         if self.weight.fast is not None and self.bias.fast is not None:
@@ -203,8 +264,12 @@ class BatchNorm2d_fw(nn.BatchNorm2d):  # used in MAML to forward input with fast
         return out
 
 
-class BatchNorm1d_fw(nn.BatchNorm1d):  # used in MAML to forward input with fast weight
-    def __init__(self, num_features):
+class BatchNorm1d_fw(nn.BatchNorm1d):
+    def __init__(self, num_features: int):
+        """
+        This class implements a batch normalization layer where the weights can be replaced by a fast weight during forward pass.
+        This is used in inner loop of MAML to forward input with fast weight (temporary parameters which will be used to update the original parameters).
+        """
         super(BatchNorm1d_fw, self).__init__(num_features)
         self.weight.fast = None
         self.bias.fast = None
@@ -212,6 +277,9 @@ class BatchNorm1d_fw(nn.BatchNorm1d):  # used in MAML to forward input with fast
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def forward(self, x):
+        """
+        Uses fast weights if they are defined. Otherwise, uses the normal nn.BatchNorm1d layer.
+        """
         running_mean = torch.zeros(x.data.size()[1]).to(self.device)
         running_var = torch.ones(x.data.size()[1]).to(self.device)
         if self.weight.fast is not None and self.bias.fast is not None:
@@ -306,7 +374,16 @@ class ConvBlock(nn.Module):
 class SimpleBlock(nn.Module):
     maml = False  # Default
 
-    def __init__(self, indim, outdim, half_res):
+    def __init__(self, indim: int, outdim: int, half_res: bool):
+        """
+        Simple Block used in ResNet. Uses two 3x3 convolutions and a shortcut connection to implement identity mapping.
+
+
+        Args:
+            indim: Number of input channels
+            outdim: Number of output channels
+            half_res: If True, then the shortcut connection downsamples the input by a factor of 2. Otherwise, the shortcut connection preserves the input resolution.
+        """
         super(SimpleBlock, self).__init__()
         self.indim = indim
         self.outdim = outdim
@@ -364,6 +441,9 @@ class SimpleBlock(nn.Module):
             init_layer(layer)
 
     def forward(self, x):
+        """
+        Standard implementation of ResNet block. Idea behind ResNet is to use identity shortcut connections to avoid vanishing gradients.
+        """
         out = self.C1(x)
         out = self.BN1(out)
         out = self.relu1(out)
@@ -459,7 +539,18 @@ class BottleneckBlock(nn.Module):
         return out
 
 
-def full_block(in_features, out_features, dropout):
+def full_block(in_features: int, out_features: int, dropout: float):
+    """
+    A fully connected block used in FCNet.
+
+    Args:
+        in_features: Number of input features
+        out_features: Number of output features
+        dropout: Dropout probability
+
+    Returns:
+        A Sequential module consisting of a linear layer, batch normalization, ReLU activation and dropout in that order
+    """
     return nn.Sequential(
         nn.Linear(in_features, out_features),
         nn.BatchNorm1d(out_features),
@@ -480,9 +571,21 @@ def zeros(tensor):
 
 
 def full_block_fw(in_features, out_features, dropout):
+    """
+    A fully connected block used in FCNet with fast weights.
+    Used in inner loop of MAML to forward input with fast weight (temporary parameters which will be used to update the original parameters).
+
+    Args:
+        in_features: Number of input features
+        out_features: Number of output features
+        dropout: Dropout probability
+
+    Returns:
+        A Sequential module consisting of a linear layer (with fast weights), batch normalization (with fast weights), ReLU activation and dropout in that order
+    """
     return nn.Sequential(
-        Linear_fw(in_features, out_features),
-        BatchNorm1d_fw(out_features),
+        Linear_fw(in_features, out_features),  # use weight fast weight in forward pass
+        BatchNorm1d_fw(out_features),  # use weight fast weight in forward pass
         nn.ReLU(),
         nn.Dropout(p=dropout),
     )

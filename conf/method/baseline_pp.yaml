@@ -1,6 +1,9 @@
+# @package _global_
+
 defaults:
   - baseline
 
-name: baseline_pp
-cls:
-  loss: dist
+method:
+  name: baseline_pp
+  cls:
+    loss: dist
