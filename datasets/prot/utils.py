@@ -16,7 +16,6 @@ from sklearn.preprocessing import LabelEncoder
 
 from goatools.base import get_godag
 
-go = get_godag("go-basic.obo", optional_attrs="relationship")
 EMB_LAYER = 33
 
 
@@ -43,6 +42,7 @@ def get_ancestor_dict(file_path):
 
 def get_level(annots, level):
     """Returns annotations in annots from the given level"""
+    go = get_godag("go-basic.obo", optional_attrs="relationship")
     return {
         annot
         for annot in annots
@@ -88,7 +88,7 @@ def select_annot_via_ic(annots, term_frequency, max_freq):
     return annots[0]
 
 
-def get_samples_using_ic(root: str, level : int = 5) -> list[ProtSample]:
+def get_samples_using_ic(root: str, level: int = 5) -> list[ProtSample]:
     """
     Loads all samples from the data directory and returns a list of ProtSample objects.
     Requires that the data directory contains the following files:
@@ -250,7 +250,7 @@ def encodings(root, level=5, is_ic=True):
         all_annots = set(adict.keys())
     else:
         all_annots = get_level(set(adict.keys()), level)
-    
+
     for key, value in adict.items():
         all_annots |= value
     le = LabelEncoder()
