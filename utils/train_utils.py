@@ -47,25 +47,39 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
     logger = get_logger(__name__, cfg)
 
     # Instatiate train dataset
-    logger.info("Initializing training dataset.")
     match cfg.method.type:
         case "baseline":
+            logger.info(
+                f"Initializing simple train dataset. (Using {(100 * cfg.dataset.subset):.0f}%)"
+            )
             train_dataset = instantiate(
-                cfg.dataset.simple_cls, batch_size=cfg.method.train_batch, mode="train"
+                cfg.dataset.simple_cls,
+                batch_size=cfg.train.train_batch,
+                mode="train",
             )
         case "meta":
+            logger.info(
+                f"Initializing few-shot train dataset. (Using {(100 * cfg.dataset.subset):.0f}%)"
+            )
             train_dataset = instantiate(cfg.dataset.set_cls, mode="train")
         case _:
             raise ValueError(f"Unknown method type: {cfg.method.type}")
 
     # Instantiate val dataset
-    logger.info("Initializing validation dataset.")
     match cfg.eval.type:
         case "simple":
+            logger.info(
+                f"Initializing simple validation dataset. (Using {(100 * cfg.dataset.subset):.0f}%)"
+            )
             val_dataset = instantiate(
-                cfg.dataset.simple_cls, batch_size=cfg.method.val_batch, mode="val"
+                cfg.dataset.simple_cls,
+                batch_size=cfg.train.val_batch,
+                mode="val",
             )
         case _:
+            logger.info(
+                f"Initializing few-shot validation dataset. (Using {(100 * cfg.dataset.subset):.0f}%)"
+            )
             val_dataset = instantiate(cfg.dataset.set_cls, mode="val")
 
     # Instantiate backbone (For MAML, need to instantiate backbone with fast weight)
