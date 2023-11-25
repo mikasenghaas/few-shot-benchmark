@@ -192,7 +192,7 @@ class MetaTemplate(nn.Module, ABC):
     def get_progress_bar(
         self,
         iterable: Iterable,
-        total: int | None = None,
+        total: Union[int, None] = None,
     ) -> tqdm:
         terminal_width = shutil.get_terminal_size().columns
         description_width = max(terminal_width - 30 - 20, 0)
