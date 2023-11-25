@@ -1,7 +1,7 @@
 defaults:
   - _self_ # Prevents warning in Hydra 1.1 (https://hydra.cc/docs/1.2/upgrades/1.0_to_1.1/default_composition_order/)
   - dataset: tabula_muris
-  - method: baseline_pp
+  - method: maml
 
 exp:
   name: ??? # Experiment name
@@ -15,6 +15,7 @@ exp:
   device: "cpu" # Device to use
   log_level: "INFO" # Set logging level
   seed: 42 # Seed to use
+  use_sot: True # Whether to use self-optimal transport
 
 train:
   iter_num: 600 # Number of episodes to train few-shot methods (no effect)

@@ -82,15 +82,19 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
             )
             val_dataset = instantiate(cfg.dataset.set_cls, mode="val")
 
+    sot = None
+    if cfg.exp.use_sot:
+        logger.info("Using SOT")
+        # dim is n_way * (n_support * n_query)
+        sot = instantiate(cfg.sot.cls, n_way=cfg.dataset.set_cls.n_way, n_support=cfg.dataset.set_cls.n_support, n_query=cfg.dataset.set_cls.n_query)
+
     # Instantiate backbone (For MAML, need to instantiate backbone with fast weight)
     if cfg.method.fast_weight:
         logger.info("Initialise backbone (with fast weight)")
-        backbone = instantiate(
-            cfg.dataset.backbone, x_dim=train_dataset.dim, fast_weight=True
-        )
+        backbone = instantiate(cfg.dataset.backbone, x_dim=train_dataset.dim, fast_weight=True, sot=sot)
     else:
         logger.info("Initialise backbone (no fast weight)")
-        backbone = instantiate(cfg.dataset.backbone, x_dim=train_dataset.dim)
+        backbone = instantiate(cfg.dataset.backbone, x_dim=train_dataset.dim, sot=sot)
 
     # Instatiante model with backbone
     logger.info("Initialise model")
@@ -114,10 +118,10 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
 
 
 def train(
-    train_loader: DataLoader,
-    val_loader: DataLoader,
-    model: nn.Module,
-    cfg: DictConfig,
+        train_loader: DataLoader,
+        val_loader: DataLoader,
+        model: nn.Module,
+        cfg: DictConfig,
 ):
     """
     Full training loop over epochs. Saves model checkpoints and logs to wandb.
