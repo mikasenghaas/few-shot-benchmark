@@ -49,7 +49,7 @@ class Baseline(MetaTemplate):
         # of the classifier
         self.n_classes = n_classes
 
-        # Define the classifier
+        # Define the classifier used only the training phase!
         if loss == "softmax":
             self.classifier = nn.Linear(self.feature.final_feat_dim, n_classes)
             self.classifier.bias.data.fill_(0)
