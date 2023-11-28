@@ -11,4 +11,4 @@ method:
     n_support: ${exp.n_shot}
 
 train:
-  stop_epoch: 60
+  stop_epoch: 10

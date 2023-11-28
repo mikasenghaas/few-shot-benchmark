@@ -161,7 +161,10 @@ class MAML(MetaTemplate):
         for _ in range(self.task_update_num):
 
             # Compute the predictions and loss for the support set
-            scores = self.forward(x_support)
+
+            # transductive learning
+            scores = self.forward(torch.cat([x_support, x_query], dim=0))[:x_support.shape[0]] # without transductive scores = self.forward(x_support)
+
             set_loss = self.loss_fn(scores, y_support)
 
             # Build full graph support gradient of gradient
@@ -184,7 +187,8 @@ class MAML(MetaTemplate):
                 fast_parameters.append(weight.fast)  
 
         # Compute the scores for the query set
-        scores = self.forward(x_query)
+        # transductive learning
+        scores = self.forward(torch.cat([x_support, x_query], dim=0))[x_support.shape[0]:] # without transductive scores = self.forward(x_query)
 
         return scores
 

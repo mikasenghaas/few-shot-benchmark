@@ -16,5 +16,5 @@ method:
     loss: softmax
 
 train:
-  stop_epoch: 40 # Number of epochs to train
+  stop_epoch: 10 # Number of epochs to train
   train_batch: 16
