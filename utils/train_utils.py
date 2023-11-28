@@ -50,7 +50,7 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
     match cfg.method.type:
         case "baseline":
             logger.info(
-                f"Initializing simple train dataset. (Using {(100 * cfg.dataset.subset):.0f}%)"
+                f"Initializing train {cfg.dataset.simple_cls._target_}. (Using {(100 * cfg.dataset.subset):.0f}%)"
             )
             train_dataset = instantiate(
                 cfg.dataset.simple_cls,
@@ -59,7 +59,7 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
             )
         case "meta":
             logger.info(
-                f"Initializing few-shot train dataset. (Using {(100 * cfg.dataset.subset):.0f}%)"
+                f"Initializing train {cfg.dataset.set_cls._target_}. (Using {(100 * cfg.dataset.subset):.0f}%)"
             )
             train_dataset = instantiate(cfg.dataset.set_cls, mode="train")
         case _:
@@ -69,7 +69,7 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
     match cfg.eval.type:
         case "simple":
             logger.info(
-                f"Initializing simple validation dataset. (Using {(100 * cfg.dataset.subset):.0f}%)"
+                f"Initializing val {cfg.dataset.simple_cls._target_}. (Using {(100 * cfg.dataset.subset):.0f}%)"
             )
             val_dataset = instantiate(
                 cfg.dataset.simple_cls,
@@ -78,22 +78,21 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
             )
         case _:
             logger.info(
-                f"Initializing few-shot validation dataset. (Using {(100 * cfg.dataset.subset):.0f}%)"
+                f"Initializing val {cfg.dataset.set_cls._target_}. (Using {(100 * cfg.dataset.subset):.0f}%)"
             )
             val_dataset = instantiate(cfg.dataset.set_cls, mode="val")
 
     # Instantiate backbone (For MAML, need to instantiate backbone with fast weight)
+    logger.info(f"Initialise backbone {cfg.dataset.backbone._target_}")
     if cfg.method.fast_weight:
-        logger.info("Initialise backbone (with fast weight)")
         backbone = instantiate(
             cfg.dataset.backbone, x_dim=train_dataset.dim, fast_weight=True
         )
     else:
-        logger.info("Initialise backbone (no fast weight)")
         backbone = instantiate(cfg.dataset.backbone, x_dim=train_dataset.dim)
 
     # Instatiante model with backbone
-    logger.info("Initialise model")
+    logger.info(f"Initialise method {cfg.method.cls._target_}")
     model = instantiate(cfg.method.cls, backbone=backbone)
     model = model.to(device)
 
@@ -232,10 +231,10 @@ def test(cfg: DictConfig, model: nn.Module, split: str):
             )
         case _:
             logger.info(
-                f"Initialise {split} {cfg.dataset.name} dataset with {cfg.train.iter_num} episodes"
+                f"Initialise {split} {cfg.dataset.name} dataset with {cfg.eval.n_episodes} episodes"
             )
             test_dataset = instantiate(
-                cfg.dataset.set_cls, n_episode=cfg.train.iter_num, mode=split
+                cfg.dataset.set_cls, n_episode=cfg.eval.n_episodes, mode=split
             )
 
     # Get the test loader

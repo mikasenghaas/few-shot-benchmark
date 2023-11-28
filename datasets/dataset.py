@@ -82,6 +82,18 @@ class FewShotDataset(Dataset):
         """
         return self._data_dir
 
+    def set_n_episodes(self):
+        """
+        Sets the number of episodes for the dataset to match the number of samples
+        in the dataset.
+        """
+        assert (
+            hasattr(self, "num_samples")
+            and hasattr(self, "n_way")
+            and hasattr(self, "n_support")
+        ), "Please set the number of samples, number of classes and number of support samples per class first."
+        self.n_episodes = self.num_samples // (self.n_way * self.n_support)
+
     def initialize_data_dir(self, root_dir: str, download_flag: bool = True):
         """
         Utility function to initialize the data directory. Checks

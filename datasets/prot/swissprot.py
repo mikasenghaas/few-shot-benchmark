@@ -18,8 +18,6 @@ from datasets.prot.utils import (
     encodings,
 )
 
-from utils.io_utils import get_logger
-
 EMB_PATH = "embeddings"
 EMB_LAYER = 33
 PROTDIM = 1280
@@ -227,19 +225,26 @@ class SPSetDataset(SPDataset):
         n_way: int,
         n_support: int,
         n_query: int,
-        n_episode: int = 100,
+        n_episodes: int | None = None,
         root: str = "./data",
         mode: str = "train",
         subset: float = 1.0,
         use_ic_selection: bool = True,
     ):
         """
+        Initializes the dataset by loading the entire dataset into memory.
+        If the data is not present in the data directory, it is downloaded to the `root` directory, processed and
+        loaded first. Also creates a list of sub-datasets, one for each class in the dataset with
+        a corresponding data loader using the `FewShotSubDataset` class. The data loader always
+        samples n_support + n_query samples in a single batch. The number of episodes per epoch
+        is set automatically such that the number of samples seen per epoch is equal to the total
+        number of samples in the dataset.
 
         Args:
             n_way (int): number of classes in a single episode
             n_support (int): number of support samples per class (k-shot)
             n_query (int): number of query samples per class
-            n_episode (int): number of episodes per epoch
+            n_episodes (optional, int): number of episodes per epoch (Default: n_samples / (n_way * n_support)
             root (str): path to the data directory to download the raw data in. (Default: `./data/`)
             mode (str): train, val, or test
             subset (float): ratio of the data to load (e.g. 0.1 for 10%)
@@ -248,10 +253,11 @@ class SPSetDataset(SPDataset):
         # Initialise the data directory
         self.initialize_data_dir(root, download_flag=False)
 
-        # Save parameters
+        # Save all constructor arguments as attributes
         self.n_way = n_way
-        self.n_episode = n_episode
-        min_samples = n_support + n_query
+        self.n_support = n_support
+        self.n_query = n_query
+        self.min_samples = n_support + n_query
 
         # Save encoding
         self.trg2idx = encodings(self.data_dir, is_ic=use_ic_selection)
@@ -259,15 +265,22 @@ class SPSetDataset(SPDataset):
         # Load all samples
         samples = self.load_swissprot(
             mode=mode,
-            min_samples=min_samples,
+            min_samples=self.min_samples,
             subset=subset,
             use_ic_selection=use_ic_selection,
         )
+        self.num_samples = len(samples)
         self.annotations = get_ids(samples)
+
+        # Set the number of episodes
+        if n_episodes:
+            self.n_episodes = n_episodes
+        else:
+            self.set_n_episodes()
 
         # Create a list of sub-datasets, one for each class in the dataset
         sub_data_loader_params = dict(
-            batch_size=min_samples,
+            batch_size=self.min_samples,
             shuffle=True,
             num_workers=0,  # use main thread only or may receive multiple batches
             pin_memory=False,
@@ -330,7 +343,7 @@ class SPSetDataset(SPDataset):
         Returns:
             data_loader (DataLoader): PyTorch DataLoader object
         """
-        sampler = EpisodicBatchSampler(len(self), self.n_way, self.n_episode)
+        sampler = EpisodicBatchSampler(len(self), self.n_way, self.n_episodes)
         data_loader_params = dict(
             batch_sampler=sampler,
             num_workers=num_workers,
