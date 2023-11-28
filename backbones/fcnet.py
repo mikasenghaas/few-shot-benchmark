@@ -7,8 +7,7 @@ from backbones.blocks import full_block, full_block_fw
 class FCNet(nn.Module):
     fast_weight = False  # Default
 
-    def __init__(self, x_dim: int, layer_dim: list = [64, 64], dropout: float = 0.2, fast_weight: bool = False, sot: SOT = None,
-                 **kwargs):
+    def __init__(self, x_dim: int, layer_dim: list = [64, 64], dropout: float = 0.2, fast_weight: bool = False, **kwargs):
         """
         Fully connected network for feature extraction. The network is composed of a series of fully connected layers.
 
@@ -17,7 +16,6 @@ class FCNet(nn.Module):
             layer_dim: list of hidden dimensions
             dropout: dropout rate
             fast_weight: whether to use fast weight (temporary parameters used to update initial parameters in MAML)
-            sot: SOT object for computing the SOT features
         """
         super(FCNet, self).__init__()
         self.fast_weight = fast_weight
@@ -32,21 +30,13 @@ class FCNet(nn.Module):
             in_dim = dim
 
         self.encoder = nn.Sequential(*layers)
-        self.final_feat_dim = layer_dim[-1]
-        # TODO add SOT
-        # self.sot = sot
-        # if self.sot is not None:
-        #     self.sot_lin = nn.Linear(self.sot.dim, self.final_feat_dim, bias=False)
+        self.final_feat_dim = layer_dim[-1] 
 
     def forward(self, x):
         N, D = x.shape
         x = self.encoder(x)
         x = x.view(x.size(0), -1)
 
-        # TODO add SOT
-        # if self.sot is not None:
-        #     x = self.sot(x)
-        #     x = self.sot_lin(x)
         return x
 
 
