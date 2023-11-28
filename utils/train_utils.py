@@ -46,6 +46,16 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
     """
     logger = get_logger(__name__, cfg)
 
+    # handle batch size, batch size must be None or auto if exp.use_sot is True
+    print("train_batch", cfg.train.train_batch)
+    if cfg.exp.use_sot and cfg.train.train_batch is not None:
+        raise ValueError('batch size can not be defined if exp.use_sot is True\n'
+                         'either set exp.use_sot=False or set train.train_batch=null\n'
+                         'auto will set batch size to n_way * (n_support + n_query)')
+    if cfg.exp.use_sot:
+        cfg.train.train_batch = cfg.exp.n_way * (cfg.exp.n_shot + cfg.exp.n_query)
+        cfg.train.val_batch = cfg.exp.n_way * (cfg.exp.n_shot + cfg.exp.n_query)
+
     # Instatiate train dataset
     match cfg.method.type:
         case "baseline":

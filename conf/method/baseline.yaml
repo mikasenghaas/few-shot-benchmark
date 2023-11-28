@@ -17,4 +17,5 @@ method:
 
 train:
   stop_epoch: 10 # Number of epochs to train
-  train_batch: 16
+  train_batch: null # this is required to be null when using SOT, it will be set to n_way * (n_support + n_query)
+  val_batch: null # this is required to be null when using SOT, it will be set to n_way * (n_support + n_query)
