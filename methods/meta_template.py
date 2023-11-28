@@ -12,8 +12,6 @@ from torch.autograd import Variable
 
 from utils.data_utils import pearson_corr
 
-from .self_optimal_transport import SOT
-
 
 class MetaTemplate(nn.Module, ABC):
     def __init__(
@@ -25,7 +23,6 @@ class MetaTemplate(nn.Module, ABC):
         log_wandb: bool = True,
         print_freq: int = 1,
         type: str = "classification",
-        sot : SOT = None,
     ):
         """
         Base class for the meta-learning methods.
@@ -38,7 +35,6 @@ class MetaTemplate(nn.Module, ABC):
             log_wandb (bool): whether to log the results to wandb
             print_freq (int): how often (in terms of # of batches) to print the results
             type (str): the type of the task (classification or regression)
-            sot (SOT) : Self-Optimal Transport Feature Transformer
         """
 
         # Init parent directory
@@ -52,7 +48,6 @@ class MetaTemplate(nn.Module, ABC):
         self.feat_dim = self.feature.final_feat_dim
         self.change_way = change_way  # some methods allow different_way classification during training and test
         self.type = type
-        self.SOT = sot
 
         # Init device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -127,10 +122,6 @@ class MetaTemplate(nn.Module, ABC):
 
             # Extract features using the backbone
             z_all = self.feature.forward(x)
-
-            # Apply SOT if provided
-            if self.sot is not None:
-                z_all = self.SOT(z_all)
 
             # Now reshape back the tensor to (n_way, n_support + n_query, feat_dim)
             z_all = z_all.view(self.n_way, self.n_support + self.n_query, -1)

@@ -2,12 +2,14 @@ import torch
 from torch import nn as nn
 
 from backbones.blocks import full_block, full_block_fw
+from methods.self_optimal_transport import SOT
 
 
 class FCNet(nn.Module):
     fast_weight = False  # Default
 
-    def __init__(self, x_dim: int, layer_dim: list = [64, 64], dropout: float = 0.2, fast_weight: bool = False, **kwargs):
+    def __init__(self, x_dim: int, layer_dim: list = [64, 64], dropout: float = 0.2, fast_weight: bool = False,
+                 sot: SOT = None, input_size: int = None, **kwargs):
         """
         Fully connected network for feature extraction. The network is composed of a series of fully connected layers.
 
@@ -16,6 +18,9 @@ class FCNet(nn.Module):
             layer_dim: list of hidden dimensions
             dropout: dropout rate
             fast_weight: whether to use fast weight (temporary parameters used to update initial parameters in MAML)
+            sot: self optimal transport layer
+            input_size: input size of SOT layer, must be provided if SOT is used,
+                        ensures that the output of the FCNet will be layer_dim[-1]
         """
         super(FCNet, self).__init__()
         self.fast_weight = fast_weight
@@ -30,13 +35,20 @@ class FCNet(nn.Module):
             in_dim = dim
 
         self.encoder = nn.Sequential(*layers)
-        self.final_feat_dim = layer_dim[-1] 
+        self.final_feat_dim = layer_dim[-1]
+
+        assert sot is None or input_size is not None, "input_size must be provided if SOT is used"
+        self.sot = sot
+        if self.sot is not None:
+            self.linear = torch.nn.Linear(input_size, self.final_feat_dim)
 
     def forward(self, x):
-        N, D = x.shape
         x = self.encoder(x)
-        x = x.view(x.size(0), -1)
-
+        x = x.view(x.size(0), -1) # (input_size, layer_dim[-1])
+        # Apply SOT if provided
+        if self.sot is not None:
+            x = self.sot(x)  # (input_size, input_size)
+            x = self.linear(x) # (input_size, layer_dim[-1])
         return x
 
 

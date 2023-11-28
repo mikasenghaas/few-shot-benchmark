@@ -10,12 +10,15 @@ class SOT(object):
                  sigmoid: bool = False, mask_diag: bool = True, max_scale: bool = True,
                  **kwargs):
         """
-        :param distance_metric - Compute the cost matrix.
-        :param ot_reg - Sinkhorn entropy regularization (lambda). For few-shot classification, 0.1-0.2 works best.
-        :param sinkhorn_iterations - Maximum number of sinkhorn iterations.
-        :param sigmoid - If to apply sigmoid(log_p) instead of the usual exp(log_p).
-        :param mask_diag - Set to true to apply diagonal masking before and after the OT.
-        :param max_scale - Re-scale the SOT values to range [0,1].
+        :param distance_metric -
+        Args:
+            distance_metric: Compute the cost matrix.
+            ot_reg:  Sinkhorn entropy regularization (lambda). For few-shot classification, 0.1-0.2 works best.
+            sinkhorn_iterations: Maximum number of sinkhorn iterations.
+            sigmoid: If to apply sigmoid(log_p) instead of the usual exp(log_p).
+            mask_diag: Set to true to apply diagonal masking before and after the OT.
+            max_scale: Re-scale the SOT values to range [0,1].
+            **kwargs:
         """
         super().__init__()
 
@@ -56,6 +59,10 @@ class SOT(object):
     def __call__(self, X: torch.Tensor) -> torch.Tensor:
         """
         Compute the SOT features for X
+        Args:
+            X: input features of shape (batch_size, num_points, feat_dim)
+        Returns:
+            z: SOT features of shape (batch_size, num_points, num_points)
         """
         # get masked cost matrix
         C = self.compute_cost(X=X)
@@ -75,7 +82,8 @@ class SOT(object):
             z = z / z_max
 
         # set self-values to 1
-        return self.mask_diagonal(z, value=1)
+        z_out = self.mask_diagonal(z, value=1)
+        return z_out
 
     @staticmethod
     def cosine_similarity(a: torch.Tensor, eps: float = 1e-8):
