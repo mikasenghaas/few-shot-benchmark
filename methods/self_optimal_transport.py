@@ -6,21 +6,26 @@ import torch
 class SOT(object):
     supported_distances = ['cosine', 'euclidean']
 
-    def __init__(self, distance_metric: str = 'cosine', ot_reg: float = 0.1, sinkhorn_iterations: int = 10,
+    def __init__(self, final_feat_dim : int, distance_metric: str = 'cosine', ot_reg: float = 0.1, sinkhorn_iterations: int = 10,
                  sigmoid: bool = False, mask_diag: bool = True, max_scale: bool = True,
                  **kwargs):
         """
-        :param distance_metric - Compute the cost matrix.
-        :param ot_reg - Sinkhorn entropy regularization (lambda). For few-shot classification, 0.1-0.2 works best.
-        :param sinkhorn_iterations - Maximum number of sinkhorn iterations.
-        :param sigmoid - If to apply sigmoid(log_p) instead of the usual exp(log_p).
-        :param mask_diag - Set to true to apply diagonal masking before and after the OT.
-        :param max_scale - Re-scale the SOT values to range [0,1].
+        Self-Optimal Transport (SOT) features.
+
+        Args:
+            final_feat_dim (int): the final dimension of the features.
+            distance_metric (str): the distance metric to use. Can be either 'cosine' or 'euclidean'.
+            ot_reg (float): the regularization parameter of the OT algorithm.
+            sinkhorn_iterations (int): the number of iterations of the OT algorithm.
+            sigmoid (bool): whether to apply sigmoid on the output.
+            mask_diag (bool): whether to mask the diagonal of the OT matrix.
+            max_scale (bool): whether to scale the OT matrix to [0, 1].
         """
         super().__init__()
 
         assert distance_metric.lower() in SOT.supported_distances and sinkhorn_iterations > 0
 
+        self.final_feat_dim = final_feat_dim
         self.sinkhorn_iterations = sinkhorn_iterations
         self.distance_metric = distance_metric.lower()
         self.mask_diag = mask_diag
