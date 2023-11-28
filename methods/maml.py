@@ -59,40 +59,6 @@ class MAML(MetaTemplate):
         # Define the device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def _prepare_input(self, x : torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Split the input into support and query sets and flatten.
-
-        Args:
-            x (torch.Tensor) : input of shape (n_way, n_support + n_query, feat_dim)
-
-        Returns:
-            x_support (torch.Tensor) : support set of shape (n_way * n_support, feat_dim)
-            x_query (torch.Tensor) : query set of shape (n_way * n_query, feat_dim)
-        """
-
-        # Move to a device
-        x = x.to(self.device)
-
-        # Apply SOT if applicable
-        if self.SOT is not None:
-            x_all = x.view.contiguous().view(self.n_way*(self.n_support + self.n_query), *x.size()[2:])
-            x_all = self.SOT(x_all)
-            x = x_all.view(self.n_way, self.n_support + self.n_query, *x.size()[2:])
-
-        # Split
-        x_support, x_query = x[:, :self.n_support, :], x[:, self.n_support:, :]
-
-        # Flatten
-        x_support = x_support.contiguous().view(self.n_way * self.n_support, *x.size()[2:])
-        x_query = x_query.contiguous().view(self.n_way * self.n_query, *x.size()[2:])
-
-        # Enable gradients
-        x_support = x_support.requires_grad_()
-        x_query = x_query.requires_grad_()
-
-        return x_support, x_query
-
     def parse_feature(self, x : Union[List[torch.Tensor], torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Split the input into support and query sets and flatten.
@@ -106,13 +72,17 @@ class MAML(MetaTemplate):
             y_support (torch.Tensor) : support set labels of shape (n_way * n_support,)
         """
 
-        # Get the support and query sets, apply SOT if applicable
-        if isinstance(x, list):
-            # If there are >1 inputs to model (e.g. GeneBac)
-            x_parsed = [self._prepare_input(x_i) for x_i in x]
-            x_support, x_query = [x_i[0] for x_i in x_parsed], [x_i[1] for x_i in x_parsed]
-        else:
-            x_support, x_query = self._prepare_input(x)
+        # Run backbone and possibly SOT
+        # (shape: (n_way, n_support, feat_dim)), ...
+        x_support, x_query = super().parse_feature(x, is_feature=False)
+
+        # Flatten
+        x_support = x_support.contiguous().view(self.n_way * self.n_support, -1)
+        x_query = x_query.contiguous().view(self.n_way * self.n_query, -1)
+
+        # Enable gradients
+        x_support = x_support.requires_grad_()
+        x_query = x_query.requires_grad_()
 
         # Get the labels of the support set
         y_support = self.get_episode_labels(self.n_support, enable_grad=True)
@@ -129,8 +99,7 @@ class MAML(MetaTemplate):
         Returns:
             scores (torch.Tensor) : scores of shape (n_way * n_query, n_way)
         """
-        out = self.feature.forward(x)
-        scores = self.classifier.forward(out)
+        scores = self.classifier.forward(x)
         return scores
 
     def set_forward(self, x : Union[List[torch.Tensor], torch.Tensor]) -> torch.Tensor:
@@ -151,9 +120,6 @@ class MAML(MetaTemplate):
             we use the fast parameters to compute the loss on the query set.
         """
 
-        # Parse the input data
-        x_support, x_query, y_support = self.parse_feature(x)
-
         # Get fast parameters
         fast_parameters = list(self.parameters())
 
@@ -165,6 +131,9 @@ class MAML(MetaTemplate):
 
         # Try to adapt the model to the given support set
         for _ in range(self.task_update_num):
+
+            # Parse the input data: backbone + (SOT) + flatten
+            x_support, x_query, y_support = self.parse_feature(x)
 
             # Compute the predictions and loss for the support set
             scores = self.forward(x_support)
