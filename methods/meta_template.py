@@ -23,6 +23,7 @@ class MetaTemplate(nn.Module, ABC):
         log_wandb: bool = True,
         print_freq: int = 1,
         type: str = "classification",
+        **kwargs,
     ):
         """
         Base class for the meta-learning methods.

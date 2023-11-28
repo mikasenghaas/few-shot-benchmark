@@ -17,7 +17,3 @@ dataset:
     _target_: backbones.fcnet.FCNet
     layer_dim: [512, 512]
 
-exp:
-  n_way: 5
-  n_shot: 5
-  n_query: 15

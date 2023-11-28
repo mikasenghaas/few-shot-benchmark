@@ -102,7 +102,6 @@ def get_model_file(cfg: OmegaConf) -> str:
     else:
         dir = os.path.join(cp_cfg.dir, cp_cfg.time)
 
-    # print(f"Using checkpoint dir: {dir}")
     return get_assigned_file(dir, cp_cfg.test_iter)
 
 

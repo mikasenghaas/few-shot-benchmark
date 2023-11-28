@@ -47,14 +47,14 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
     logger = get_logger(__name__, cfg)
 
     # handle batch size, batch size must be None or auto if exp.use_sot is True
-    print("train_batch", cfg.train.train_batch)
     if cfg.exp.use_sot and cfg.train.train_batch is not None:
         raise ValueError('batch size can not be defined if exp.use_sot is True\n'
                          'either set exp.use_sot=False or set train.train_batch=null\n'
-                         'auto will set batch size to n_way * (n_support + n_query)')
+                         'if null batch will be set to n_way * (n_support + n_query)')
     if cfg.train.train_batch is None:
         cfg.train.train_batch = cfg.exp.n_way * (cfg.exp.n_shot + cfg.exp.n_query)
         cfg.train.val_batch = cfg.exp.n_way * (cfg.exp.n_shot + cfg.exp.n_query)
+        cfg.train.test_batch = cfg.exp.n_way * (cfg.exp.n_shot + cfg.exp.n_query)
 
     # Instatiate train dataset
     match cfg.method.type:
@@ -240,18 +240,25 @@ def test(cfg: DictConfig, model: nn.Module, split: str):
     # Instantiate test dataset
     match cfg.method.type:
         case "simple":
+            if split == "train":
+                batch_size = cfg.train.train_batch
+            elif split == "val":
+                batch_size = cfg.train.val_batch
+            elif split == "test":
+                batch_size = cfg.train.test_batch
             logger.info(
-                f"Initialise {split} {cfg.dataset.name} dataset with batch size {cfg.method.val_batch}"
+                f"Initialise {split} {cfg.dataset.name} dataset with batch size {batch_size}"
             )
             test_dataset = instantiate(
-                cfg.dataset.simple_cls, batch_size=cfg.method.val_batch, mode=split
+                cfg.dataset.simple_cls, batch_size, mode=split
             )
         case _:
             logger.info(
                 f"Initialise {split} {cfg.dataset.name} dataset with {cfg.train.iter_num} episodes"
             )
             test_dataset = instantiate(
-                cfg.dataset.set_cls, n_episode=cfg.train.iter_num, mode=split
+                cfg.dataset.set_cls, n_episode=cfg.train.iter_num, mode=split,
+
             )
 
     # Get the test loader
@@ -260,6 +267,11 @@ def test(cfg: DictConfig, model: nn.Module, split: str):
         num_workers=cfg.dataset.loader.num_workers,
         pin_memory=cfg.dataset.loader.pin_memory,
     )
+    if next(iter(test_loader))[0].shape[0] < cfg.exp.n_way:
+        message = (f'there are not enough classes in {split} split\n'
+                   f'to form {cfg.exp.n_way} way test (max {next(iter(test_loader))[0].shape[0]} way test)\n'
+                   f'try reducing n_support ({cfg.exp.n_shot}) or n_query ({cfg.exp.n_query})')
+        raise ValueError(message)
 
     # Load model from checkpoint (either latest or specified)
     logger.info("Load model from checkpoint")
@@ -277,7 +289,7 @@ def test(cfg: DictConfig, model: nn.Module, split: str):
                 cfg.train.iter_num / len(test_dataset.get_data_loader())
             )
             cfg.train_iter_num = num_iters * len(test_dataset.get_data_loader())
-            # print("num_iters", num_iters)
+
             for i in range(num_iters):
                 acc_mean, acc_std = model.test_loop(test_loader, return_std=True)
                 acc_all.append(acc_mean)

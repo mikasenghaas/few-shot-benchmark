@@ -17,8 +17,3 @@ dataset:
     _target_: backbones.fcnet.FCNet
     layer_dim: [64, 64]
 
-# For baseline, how many total classes
-exp:
-  n_way: 5
-  n_shot: 5
-  n_query: 15
