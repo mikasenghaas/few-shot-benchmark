@@ -74,6 +74,12 @@ class MAML(MetaTemplate):
         # Move to a device
         x = x.to(self.device)
 
+        # Apply SOT if applicable
+        if self.SOT is not None:
+            x_all = x.view.contiguous().view(self.n_way*(self.n_support + self.n_query), *x.size()[2:])
+            x_all = self.SOT(x_all)
+            x = x_all.view(self.n_way, self.n_support + self.n_query, *x.size()[2:])
+
         # Split
         x_support, x_query = x[:, :self.n_support, :], x[:, self.n_support:, :]
 
@@ -100,7 +106,7 @@ class MAML(MetaTemplate):
             y_support (torch.Tensor) : support set labels of shape (n_way * n_support,)
         """
 
-        # Get the support and query sets
+        # Get the support and query sets, apply SOT if applicable
         if isinstance(x, list):
             # If there are >1 inputs to model (e.g. GeneBac)
             x_parsed = [self._prepare_input(x_i) for x_i in x]
