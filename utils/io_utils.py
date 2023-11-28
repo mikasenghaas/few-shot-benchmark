@@ -11,6 +11,8 @@ import torch
 from omegaconf import OmegaConf
 from torch import nn
 
+from typing import Union
+
 
 def get_assigned_file(checkpoint_dir: str, num: int) -> str:
     """
@@ -194,7 +196,7 @@ def check_cfg(cfg: OmegaConf) -> None:
         raise ValueError(f"Unknown mode: {cfg.exp.mode}")
 
 
-def get_device(device: str | None = None) -> torch.device:
+def get_device(device: Union[str, None] = None) -> torch.device:
     """
     Get device to train on. If device is specified, use that. Otherwise, use
     the first available device from the following list: ["cuda", "mps", "cpu"].
