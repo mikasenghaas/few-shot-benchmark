@@ -10,17 +10,17 @@ from backbones.blocks import Linear_fw
 from methods.meta_template import MetaTemplate
 
 
-
 class MAML(MetaTemplate):
     def __init__(
         self,
-        backbone : torch.nn.Module,
-        n_way : int,
-        n_support : int,
-        n_task : int,
-        task_update_num : int,
-        inner_lr : float,
-        **kwargs):
+        backbone: torch.nn.Module,
+        n_way: int,
+        n_support: int,
+        n_task: int,
+        task_update_num: int,
+        inner_lr: float,
+        **kwargs,
+    ):
         """
         MAML implementation. TODO: add more explanation
 
@@ -34,7 +34,9 @@ class MAML(MetaTemplate):
         """
 
         # Init the parent class
-        super(MAML, self).__init__(backbone, n_way, n_support, change_way=False, **kwargs)
+        super(MAML, self).__init__(
+            backbone, n_way, n_support, change_way=False, **kwargs
+        )
 
         # Define the classifier which comes after the backbone
         self.classifier = Linear_fw(self.feat_dim, n_way)
@@ -59,7 +61,7 @@ class MAML(MetaTemplate):
         # Define the device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def _prepare_input(self, x : torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _prepare_input(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Split the input into support and query sets and flatten.
 
@@ -75,10 +77,12 @@ class MAML(MetaTemplate):
         x = x.to(self.device)
 
         # Split
-        x_support, x_query = x[:, :self.n_support, :], x[:, self.n_support:, :]
+        x_support, x_query = x[:, : self.n_support, :], x[:, self.n_support :, :]
 
         # Flatten
-        x_support = x_support.contiguous().view(self.n_way * self.n_support, *x.size()[2:])
+        x_support = x_support.contiguous().view(
+            self.n_way * self.n_support, *x.size()[2:]
+        )
         x_query = x_query.contiguous().view(self.n_way * self.n_query, *x.size()[2:])
 
         # Enable gradients
@@ -87,13 +91,15 @@ class MAML(MetaTemplate):
 
         return x_support, x_query
 
-    def parse_feature(self, x : Union[List[torch.Tensor], torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def parse_feature(
+        self, x: Union[List[torch.Tensor], torch.Tensor]
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Split the input into support and query sets and flatten.
 
         Args:
             x (Union[List[torch.Tensor], torch.Tensor]) : input of shape (n_way, n_support + n_query, feat_dim)
-        
+
         Returns:
             x_support (torch.Tensor) : support set of shape (n_way * n_support, feat_dim)
             x_query (torch.Tensor) : query set of shape (n_way * n_query, feat_dim)
@@ -104,22 +110,24 @@ class MAML(MetaTemplate):
         if isinstance(x, list):
             # If there are >1 inputs to model (e.g. GeneBac)
             x_parsed = [self._prepare_input(x_i) for x_i in x]
-            x_support, x_query = [x_i[0] for x_i in x_parsed], [x_i[1] for x_i in x_parsed]
+            x_support, x_query = [x_i[0] for x_i in x_parsed], [
+                x_i[1] for x_i in x_parsed
+            ]
         else:
             x_support, x_query = self._prepare_input(x)
 
         # Get the labels of the support set
         y_support = self.get_episode_labels(self.n_support, enable_grad=True)
- 
+
         return x_support, x_query, y_support
 
-    def forward(self, x : Union[List[torch.Tensor], torch.Tensor]) -> torch.Tensor:
+    def forward(self, x: Union[List[torch.Tensor], torch.Tensor]) -> torch.Tensor:
         """
         Run backbone and classifier on input data.
 
         Args:
             x (Union[List[torch.Tensor], torch.Tensor]) : input data of shape (batch_size, *)
-        
+
         Returns:
             scores (torch.Tensor) : scores of shape (n_way * n_query, n_way)
         """
@@ -127,16 +135,16 @@ class MAML(MetaTemplate):
         scores = self.classifier.forward(out)
         return scores
 
-    def set_forward(self, x : Union[List[torch.Tensor], torch.Tensor]) -> torch.Tensor:
+    def set_forward(self, x: Union[List[torch.Tensor], torch.Tensor]) -> torch.Tensor:
         """
         Run backbone and classifier on input data and perform adaptation.
 
         Args:
             x (Union[List[torch.Tensor], torch.Tensor]) : input data of shape (batch_size, *)
-        
+
         Returns:
             scores (torch.Tensor) : scores of shape (n_way * n_query, n_way)
-        
+
         Notes:
             We initialize the fast parameters with the current parameters of the model, i.e., the so called
             slow parameters. We then used the fast parameters to compute the loss on the support set and
@@ -151,57 +159,59 @@ class MAML(MetaTemplate):
         # Get fast parameters
         fast_parameters = list(self.parameters())
 
-        # Reset the fast parameters 
-        for weight in self.parameters(): weight.fast = None
+        # Reset the fast parameters
+        for weight in self.parameters():
+            weight.fast = None
 
         # Reset the gradients
         self.zero_grad()
 
         # Try to adapt the model to the given support set
         for _ in range(self.task_update_num):
-
             # Compute the predictions and loss for the support set
             scores = self.forward(x_support)
             set_loss = self.loss_fn(scores, y_support)
 
             # Build full graph support gradient of gradient
-            grad = torch.autograd.grad(set_loss, fast_parameters, create_graph=True)  
-            
+            grad = torch.autograd.grad(set_loss, fast_parameters, create_graph=True)
+
             # Create/Update the fast parameters
             # (note the '-' is not merely minus value, but to create a new weight.fast)
             fast_parameters = []
             for k, weight in enumerate(self.parameters()):
-
                 # Create the fast parameter
                 if weight.fast is None:
                     weight.fast = weight - self.inner_lr * grad[k]
-                
+
                 # Update the fast parameter
                 else:
-                    weight.fast = weight.fast - self.inner_lr * grad[k]  
+                    weight.fast = weight.fast - self.inner_lr * grad[k]
 
-                # Add the fast parameter to the list 
-                fast_parameters.append(weight.fast)  
+                # Add the fast parameter to the list
+                fast_parameters.append(weight.fast)
 
         # Compute the scores for the query set
         scores = self.forward(x_query)
 
         return scores
 
-    def set_forward_adaptation(self, x : Union[List[torch.Tensor], torch.Tensor], is_feature : bool = False):
+    def set_forward_adaptation(
+        self, x: Union[List[torch.Tensor], torch.Tensor], is_feature: bool = False
+    ):
         raise ValueError(
             "MAML performs further adapation simply by increasing task_upate_num."
         )
 
-
-    def set_forward_loss(self, x : Union[torch.Tensor, List[torch.Tensor]]) -> torch.Tensor:
+    def set_forward_loss(
+        self, x: Union[torch.Tensor, List[torch.Tensor]]
+    ) -> torch.Tensor:
         """Compute the loss for the current task.
 
         Args:
             x (Union[torch.Tensor, List[torch.Tensor]]): input (list of) tensor(s)
 
         Returns:
-            torch.Tensor: loss tensor 
+            torch.Tensor: loss tensor
         """
 
         # Get the query labels
@@ -226,7 +236,7 @@ class MAML(MetaTemplate):
         Args:
             epoch (int) : current epoch
             train_loader (torch.utils.data.DataLoader) : train data loader
-            optimizer (torch.optim.Optimizer) : optimizer 
+            optimizer (torch.optim.Optimizer) : optimizer
         """
 
         # Setup tracking variables
@@ -236,22 +246,23 @@ class MAML(MetaTemplate):
 
         # Iterate over the episodes / tasks and update
         # the model parameters in MAML fashion
-        num_batches = len(train_loader)
-        pbar = self.get_progress_bar(enumerate(train_loader), total=num_batches)
+        num_episodes = len(train_loader)
+        pbar = self.get_progress_bar(enumerate(train_loader), total=num_episodes)
         pbar.set_description(
-            f"Training: Epoch {epoch:03d} | Batch/ Episodes 000/{num_batches:03d} | 0.0000"
+            f"Training: Epoch {epoch:03d} | Episodes 000/{num_episodes:03d} | 0.0000"
         )
         for i, (x, _) in enumerate(train_loader):
-
             # Reset the gradients
             optimizer.zero_grad()
-            
+
             # Setup the number of query samples
             self.set_nquery(x)
 
             # Check if the number of classes is correct
             n_way = x.size(0)
-            assert self.n_way == n_way, f"MAML do not support way change, n_way is {self.n_way} but x.size(0) is {x.size(0)}"
+            assert (
+                self.n_way == n_way
+            ), f"MAML do not support way change, n_way is {self.n_way} but x.size(0) is {x.size(0)}"
 
             # Compute the loss on the query set after adaptation on the support set
             loss = self.set_forward_loss(x)
@@ -263,7 +274,6 @@ class MAML(MetaTemplate):
 
             # Perform the MAML params update after n_task tasks
             if task_count == self.n_task:
-
                 # Backpropagate the loss
                 loss_q = torch.stack(loss_all).sum(0)
                 loss_q.backward()
@@ -272,29 +282,34 @@ class MAML(MetaTemplate):
                 # Reset the tracking variables
                 task_count = 0
                 loss_all = []
-            
 
             # Log the loss
-            self.log_training_progress(pbar, epoch, i, num_batches, avg_loss)
+            self.log_training_progress(pbar, epoch, i, num_episodes, avg_loss)
 
-    def test_loop(self, test_loader : torch.utils.data.DataLoader, return_std : bool = False):
+        epoch_loss = avg_loss / num_episodes
+
+        return epoch_loss
+
+    def test_loop(self, test_loader: torch.utils.data.DataLoader):
         """
         Test the model on the given data loader.
 
         Args:
             test_loader (torch.utils.data.DataLoader) : test data loader
-            return_std (bool) : whether to return the std of the predictions
-        
+
         Returns:
             acc_mean (float) : mean accuracy
+            acc_ci (float) : confidence interval of the accuracy
             acc_std (float) : std of the accuracy
         """
-        
+
         # Get sample
         x, _ = next(iter(test_loader))
 
         # Check if the number of classes is correct
         n_way = x.size(0)
-        assert self.n_way == n_way, f"MAML do not support way change, n_way is {self.n_way} but x.size(0) is {x.size(0)}"
+        assert (
+            self.n_way == n_way
+        ), f"MAML do not support way change, n_way is {self.n_way} but x.size(0) is {x.size(0)}"
 
-        return super().test_loop(test_loader, return_std=return_std)
+        return super().test_loop(test_loader)

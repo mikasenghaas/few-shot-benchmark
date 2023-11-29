@@ -142,7 +142,7 @@ class Baseline(MetaTemplate):
         num_batches = len(train_loader)
         pbar = self.get_progress_bar(enumerate(train_loader), total=num_batches)
         pbar.set_description(
-            f"Epoch {epoch:03d} | Batch/ Episodes 000/{num_batches:03d} | 0.0000"
+            f"Epoch {epoch:03d} | Batch 000/{num_batches:03d} | 0.0000"
         )
         loss = 0.0
         for i, (x, y) in pbar:
@@ -158,9 +158,14 @@ class Baseline(MetaTemplate):
             loss += batch_loss.item()
 
             # Print the loss
-            self.log_training_progress(pbar, epoch, i, num_batches, loss)
+            self.log_training_progress(
+                pbar, epoch, i, num_batches, loss, few_shot=False
+            )
 
-        return loss / len(train_loader)
+        # Compute the average loss
+        epoch_loss = loss / num_batches
+
+        return epoch_loss
 
     def set_forward(self, x: torch.Tensor, y: torch.Tensor = None) -> torch.Tensor:
         """

@@ -9,9 +9,6 @@ Includes:
 """
 
 import os
-import math
-
-import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -134,7 +131,7 @@ def train(
 
     # Initialise W&B run
     logger.info("Initializing W&B")
-    wandb.init(
+    run = wandb.init(
         name=cfg.name,
         group=cfg.group,
         entity=cfg.wandb.entity,
@@ -156,31 +153,34 @@ def train(
     wandb.config.update({"optimizer_details": opt_to_dict(optimizer)})
 
     # Initialise W&B artifact for model
-    model_artifact = wandb.Artifact(name=cfg.name, type="model")
+    model_artifact = wandb.Artifact(name=run.id, type="model")
 
     # Training loop
     best_model = None
     max_acc = -1
     logger.info("Start training")
     for epoch in range(cfg.train.max_epochs):
-        wandb.log({"epoch": epoch})
+        wandb.log({"epoch": epoch + 1})
         model.train()
-        model.train_loop(epoch, train_loader, optimizer)
+        loss = model.train_loop(epoch, train_loader, optimizer)
+        wandb.log({"train/loss": loss})
 
         # Validation loop on every val_freq or last epoch
         if epoch % cfg.general.val_freq == 0 or epoch == cfg.train.max_epochs - 1:
             model.eval()
-            acc = model.test_loop(val_loader)
+            acc, acc_ci, acc_std = model.test_loop(val_loader)
+            wandb.log({"val/acc": acc, "val/acc_ci": acc_ci, "val/acc_std": acc_std})
 
             if acc > max_acc:
                 logger.info(f"New best model! (Acc. {acc:.3f} > {max_acc:.3f})")
                 max_acc = acc
                 best_model = model
-                outfile = os.path.join(cfg.paths.log_dir, "best_model.tar")
-                torch.save({"epoch": epoch, "state": model.state_dict()}, outfile)
+                outfile = os.path.join(cfg.paths.log_dir, "best_model.pt")
+                torch.save(model.state_dict(), outfile)
 
     # Log best model to W&B
     model_artifact.add_dir(cfg.paths.log_dir)
+    wandb.log_artifact(model_artifact)
 
     return best_model
 
@@ -202,21 +202,12 @@ def test(cfg: DictConfig, model: nn.Module, split: str):
     logger = get_logger(__name__, cfg)
 
     # Instantiate test dataset
-    match cfg.method.type:
-        case "simple":
-            logger.info(
-                f"Initialise {split} {cfg.dataset.name} dataset with batch size {cfg.method.val_batch}"
-            )
-            test_dataset = instantiate(
-                cfg.dataset.simple_cls, batch_size=cfg.method.val_batch, mode=split
-            )
-        case _:
-            logger.info(
-                f"Initialise {split} {cfg.dataset.name} dataset with {cfg.eval.n_episodes} episodes"
-            )
-            test_dataset = instantiate(
-                cfg.dataset.set_cls, n_episodes=cfg.eval.n_episodes, mode=split
-            )
+    logger.info(
+        f"Initialise {split} {cfg.dataset.name} dataset with {cfg.eval.n_episodes} episodes"
+    )
+    test_dataset = instantiate(
+        cfg.dataset.set_cls, n_episodes=cfg.eval.n_episodes, mode=split
+    )
 
     # Get the test loader
     test_loader = test_dataset.get_data_loader(
@@ -226,22 +217,6 @@ def test(cfg: DictConfig, model: nn.Module, split: str):
 
     # Test loop
     model.eval()
-    match cfg.eval.type:
-        case "simple":
-            acc_all = []
+    acc_mean, acc_ci, acc_std = model.test_loop(test_loader)
 
-            num_iters = math.ceil(
-                cfg.train.iter_num / len(test_dataset.get_data_loader())
-            )
-            cfg.train_iter_num = num_iters * len(test_dataset.get_data_loader())
-            # print("num_iters", num_iters)
-            for i in range(num_iters):
-                acc_mean, acc_std = model.test_loop(test_loader, return_std=True)
-                acc_all.append(acc_mean)
-
-            acc_mean = np.mean(acc_all)
-            acc_std = np.std(acc_all)
-        case _:
-            acc_mean, acc_std = model.test_loop(test_loader, return_std=True)
-
-    return acc_mean, acc_std
+    return acc_mean, acc_ci, acc_std
