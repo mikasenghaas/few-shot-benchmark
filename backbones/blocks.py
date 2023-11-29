@@ -77,15 +77,20 @@ class distLinear(nn.Module):
 
     def forward(self, x):
         x_norm = torch.norm(x, p=2, dim=1).unsqueeze(1).expand_as(x)
-        x_normalized = x.div(x_norm + 0.00001)  # divides by norm of row vectors of x, handles 0 norm cases
+        x_normalized = x.div(
+            x_norm + 0.00001
+        )  # divides by norm of row vectors of x, handles 0 norm cases
         if not self.class_wise_learnable_norm:
             L_norm = (
-                torch.norm(self.L.weight.data, p=2, dim=1)  # compute the norm of each row vector of L.weight.data
+                torch.norm(
+                    self.L.weight.data, p=2, dim=1
+                )  # compute the norm of each row vector of L.weight.data
                 .unsqueeze(1)
                 .expand_as(self.L.weight.data)
             )
             self.L.weight.data = self.L.weight.data.div(
-                L_norm + 0.00001)  # normalize the row vectors of L.weight.data same as with x_normalized
+                L_norm + 0.00001
+            )  # normalize the row vectors of L.weight.data same as with x_normalized
         cos_dist = self.L(
             x_normalized
         )  # matrix product by forward function, but when using WeightNorm, this also multiply the cosine distance by a class-wise learnable norm, see the issue#4&8 in the github
@@ -135,7 +140,15 @@ class Linear_fw(nn.Linear):
 
 
 class Conv1d_fw(nn.Conv1d):
-    def __init__(self, in_channels: int, out_channels: int, kernel_size, stride=1, padding=0, bias: bool = True):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size,
+        stride=1,
+        padding=0,
+        bias: bool = True,
+    ):
         """
         This class implements a 1D convolutional layer where the weights can be replaced by a fast weight during forward pass.
         This is used in inner loop of MAML to forward input with fast weight (temporary parameters which will be used to update the original parameters).
@@ -179,7 +192,15 @@ class Conv1d_fw(nn.Conv1d):
 
 
 class Conv2d_fw(nn.Conv2d):
-    def __init__(self, in_channels: int, out_channels: int, kernel_size, stride=1, padding=0, bias: bool = True):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size,
+        stride=1,
+        padding=0,
+        bias: bool = True,
+    ):
         """
         This class implements a 2D convolutional layer where the weights can be replaced by a fast weight during forward pass.
         This is used in inner loop of MAML to forward input with fast weight (temporary parameters which will be used to update the original parameters).

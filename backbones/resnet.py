@@ -13,7 +13,9 @@ from backbones.blocks import (
 class ResNet(nn.Module):
     maml = False  # Default
 
-    def __init__(self, block, list_of_num_layers, list_of_out_dims, flatten=True, **kwargs):
+    def __init__(
+        self, block, list_of_num_layers, list_of_out_dims, flatten=True, **kwargs
+    ):
         """
         ResNet for feature extraction.
 
@@ -75,8 +77,12 @@ def ResNet34(flatten=True, **kwargs):
 
 
 def ResNet50(flatten=True, **kwargs):
-    return ResNet(BottleneckBlock, [3, 4, 6, 3], [256, 512, 1024, 2048], flatten, **kwargs)
+    return ResNet(
+        BottleneckBlock, [3, 4, 6, 3], [256, 512, 1024, 2048], flatten, **kwargs
+    )
 
 
 def ResNet101(flatten=True, **kwargs):
-    return ResNet(BottleneckBlock, [3, 4, 23, 3], [256, 512, 1024, 2048], flatten, **kwargs)
+    return ResNet(
+        BottleneckBlock, [3, 4, 23, 3], [256, 512, 1024, 2048], flatten, **kwargs
+    )

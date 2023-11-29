@@ -4,10 +4,17 @@ import torch
 
 
 class SOT(object):
-    supported_distances = ['cosine', 'euclidean']
+    supported_distances = ["cosine", "euclidean"]
 
-    def __init__(self, distance_metric: str = 'cosine', ot_reg: float = 0.1, sinkhorn_iterations: int = 10,
-                 sigmoid: bool = False, mask_diag: bool = True, max_scale: bool = True):
+    def __init__(
+        self,
+        distance_metric: str = "cosine",
+        ot_reg: float = 0.1,
+        sinkhorn_iterations: int = 10,
+        sigmoid: bool = False,
+        mask_diag: bool = True,
+        max_scale: bool = True,
+    ):
         """
         :param distance_metric - Compute the cost matrix.
         :param ot_reg - Sinkhorn entropy regularization (lambda). For few-shot classification, 0.1-0.2 works best.
@@ -18,7 +25,10 @@ class SOT(object):
         """
         super().__init__()
 
-        assert distance_metric.lower() in SOT.supported_distances and sinkhorn_iterations > 0
+        assert (
+            distance_metric.lower() in SOT.supported_distances
+            and sinkhorn_iterations > 0
+        )
 
         self.sinkhorn_iterations = sinkhorn_iterations
         self.distance_metric = distance_metric.lower()
@@ -26,18 +36,18 @@ class SOT(object):
         self.sigmoid = sigmoid
         self.ot_reg = ot_reg
         self.max_scale = max_scale
-        self.diagonal_val = 1e3                         # value to mask self-values with
+        self.diagonal_val = 1e3  # value to mask self-values with
 
     def compute_cost(self, X: torch.Tensor) -> torch.Tensor:
         """
         Compute cost matrix.
         """
-        if self.distance_metric == 'euclidean':
+        if self.distance_metric == "euclidean":
             M = torch.cdist(X, X, p=2)
             # scale euclidean distances to [0, 1]
             return M / M.max()
 
-        elif self.distance_metric == 'cosine':
+        elif self.distance_metric == "cosine":
             # cosine distance
             return 1 - SOT.cosine_similarity(X)
 
@@ -88,7 +98,6 @@ class SOT(object):
             C = torch.mm(d_n, d_n.transpose(0, 1))
         return C
 
-
     import torch
 
 
@@ -107,7 +116,9 @@ def log_sinkhorn(M: torch.Tensor, reg: float, num_iters: int):
         return batched_log_sinkhorn(M=M, reg=reg, num_iters=num_iters)
 
     # Initialize dual variable v (u is implicitly defined in the loop)
-    log_v = torch.zeros(M.size()[1]).to(M.device)  # ==torch.log(torch.ones(m.size()[1]))
+    log_v = torch.zeros(M.size()[1]).to(
+        M.device
+    )  # ==torch.log(torch.ones(m.size()[1]))
 
     # Exponentiate the pairwise distance matrix
     log_K = -M / reg
@@ -115,10 +126,10 @@ def log_sinkhorn(M: torch.Tensor, reg: float, num_iters: int):
     # Main loop
     for i in range(num_iters):
         # Match r marginals
-        log_u = - log_sum_exp(log_K + log_v[None, :], dim=1)
+        log_u = -log_sum_exp(log_K + log_v[None, :], dim=1)
 
         # Match c marginals
-        log_v = - log_sum_exp(log_u[:, None] + log_K, dim=0)
+        log_v = -log_sum_exp(log_u[:, None] + log_K, dim=0)
 
     # Compute optimal plan, cost, return everything
     log_P = log_u[:, None] + log_K + log_v[None, :]
@@ -131,10 +142,18 @@ def batched_log_sinkhorn(M, reg: float, num_iters: int):
     """
     batch_size, x_points, _ = M.shape
     # both marginals are fixed with equal weights
-    mu = torch.empty(batch_size, x_points, dtype=torch.float,
-                     requires_grad=False).fill_(1.0 / x_points).squeeze().to(M.device)
-    nu = torch.empty(batch_size, x_points, dtype=torch.float,
-                     requires_grad=False).fill_(1.0 / x_points).squeeze().to(M.device)
+    mu = (
+        torch.empty(batch_size, x_points, dtype=torch.float, requires_grad=False)
+        .fill_(1.0 / x_points)
+        .squeeze()
+        .to(M.device)
+    )
+    nu = (
+        torch.empty(batch_size, x_points, dtype=torch.float, requires_grad=False)
+        .fill_(1.0 / x_points)
+        .squeeze()
+        .to(M.device)
+    )
 
     u = torch.zeros_like(mu)
     v = torch.zeros_like(nu)
@@ -152,7 +171,14 @@ def batched_log_sinkhorn(M, reg: float, num_iters: int):
     for i in range(num_iters):
         u1 = u  # useful to check the update
         u = reg * (torch.log(mu + 1e-8) - torch.logsumexp(C(M, u, v, reg), dim=-1)) + u
-        v = reg * (torch.log(nu + 1e-8) - torch.logsumexp(C(M, u, v, reg).transpose(-2, -1), dim=-1)) + v
+        v = (
+            reg
+            * (
+                torch.log(nu + 1e-8)
+                - torch.logsumexp(C(M, u, v, reg).transpose(-2, -1), dim=-1)
+            )
+            + v
+        )
         err = (u - u1).abs().sum(-1).mean()
 
         actual_nits += 1

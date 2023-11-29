@@ -9,15 +9,16 @@ from methods.meta_template import MetaTemplate
 
 from typing import List, Tuple, Union
 
+
 class ProtoNet(MetaTemplate):
     def __init__(
-            self, 
-            backbone : torch.nn.Module, 
-            n_way : int, 
-            n_support : int, 
-            similarity : str = "euclidean",
-            **kwargs
-        ):
+        self,
+        backbone: torch.nn.Module,
+        n_way: int,
+        n_support: int,
+        similarity: str = "euclidean",
+        **kwargs
+    ):
         """Protonet Meta Learner - compute the prototypes based on the support set and then
         return the chosen similarity measure between the prototypes and the query set.
 
@@ -25,7 +26,7 @@ class ProtoNet(MetaTemplate):
             backbone (torch.nn.Module): backbone network
             n_way (int): number of classes for each task
             n_support (int): number of support samples for each class
-            similarity (str, optional): similarity metric to use. Defaults to "euclidean". 
+            similarity (str, optional): similarity metric to use. Defaults to "euclidean".
         """
 
         # Init parent class
@@ -38,13 +39,13 @@ class ProtoNet(MetaTemplate):
         # Define device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def get_similarity(self, x : torch.Tensor, y : torch.Tensor) -> torch.Tensor:
+    def get_similarity(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """Compute the similarity between queries and prototypes.
 
         Args:
             x (torch.Tensor): query tensor of shape (n_way * n_query, feat_dim)
             y (torch.Tensor): prototype tensor of shape (n_way, feat_dim)
-        
+
         Returns:
             torch.Tensor: similarity tensor of shape (n_way * n_query, n_way)
         """
@@ -62,7 +63,9 @@ class ProtoNet(MetaTemplate):
         else:
             raise NotImplementedError("Similarity type not implemented")
 
-    def set_forward(self, x : Union[torch.Tensor, List[torch.Tensor]], is_feature : bool = False) -> torch.Tensor:
+    def set_forward(
+        self, x: Union[torch.Tensor, List[torch.Tensor]], is_feature: bool = False
+    ) -> torch.Tensor:
         """
         [MetaTraining] Compute the prototypes based on the support set and then
         return the inverted distance between the prototypes and the query set.
@@ -74,7 +77,7 @@ class ProtoNet(MetaTemplate):
             Determines whether the backbone is run on the input or not.
 
         Returns:
-            torch.Tensor: output tensor of shape (n_way * n_query, n_way) 
+            torch.Tensor: output tensor of shape (n_way * n_query, n_way)
         """
 
         # Get the support and query embeddings
@@ -98,14 +101,16 @@ class ProtoNet(MetaTemplate):
 
         return scores
 
-    def set_forward_loss(self, x : Union[torch.Tensor, List[torch.Tensor]]) -> torch.Tensor:
+    def set_forward_loss(
+        self, x: Union[torch.Tensor, List[torch.Tensor]]
+    ) -> torch.Tensor:
         """Compute the loss for the current task.
 
         Args:
             x (Union[torch.Tensor, List[torch.Tensor]]): input (list of) tensor(s)
 
         Returns:
-            torch.Tensor: loss tensor 
+            torch.Tensor: loss tensor
         """
 
         # Get the query labels
