@@ -207,7 +207,7 @@ class MetaTemplate(nn.Module, ABC):
             + "}| {n_fmt}/{total_fmt}",
         )
 
-    def log_training_progress(self, pbar, epoch: int, i: int, n: int, avg_loss: float):
+    def log_training_progress(self, pbar, epoch: int, i: int, n: int, loss: float):
         """
         [Helper] Log the training progress.
 
@@ -216,18 +216,18 @@ class MetaTemplate(nn.Module, ABC):
             epoch (int): current epoch
             i (int): current batch / episode
             n (int): total number of batches / episodes
-            avg_loss (float): average loss
+            loss (float): accumulated loss
         """
 
         if (i + 1) % self.print_freq == 0:
-            current_loss = avg_loss / float(i + 1)
+            current_loss = loss / float(i + 1)
             description = "Training: Epoch {:03d} | Batch/ Episode {:04d}/{:04d} | Loss {:.5f}".format(
                 epoch + 1, i + 1, n, current_loss
             )
             pbar.set_description(description)
 
             if self.log_wandb:
-                wandb.log({"loss/train": current_loss})
+                wandb.log({"train/loss": current_loss})
 
     def eval_test_performance(
         self, evals: Union[List[Tuple[float, int]], List[float]]
@@ -248,8 +248,8 @@ class MetaTemplate(nn.Module, ABC):
         """
 
         if self.type == "classification":
-            # Compute the size of test set
-            n = sum([x[1] for x in evals])
+            # Number of episodes that are evaluated
+            n_episodes = len(evals)
 
             # Compute the mean and standard deviation of the accuracies
             acc_all = np.asarray([x[0] / x[1] * 100 for x in evals])
@@ -257,8 +257,8 @@ class MetaTemplate(nn.Module, ABC):
             acc_std = np.std(acc_all)
 
             print(
-                "%d Test Acc = %4.2f%% +- %4.2f%%"
-                % (n, acc_mean, 1.96 * acc_std / np.sqrt(n))
+                "Few-shot Accuracy = %4.2f%% +- %4.2f%%"
+                % (acc_mean, 1.96 * (acc_std / np.sqrt(n_episodes)))
             )
 
             return acc_mean, acc_std
@@ -358,13 +358,12 @@ class MetaTemplate(nn.Module, ABC):
         """
 
         # Run one epoch of episodic training
-        avg_loss = 0
-
         num_batches = len(train_loader)
         pbar = self.get_progress_bar(enumerate(train_loader), total=num_batches)
         pbar.set_description(
             f"Training: Epoch {epoch:03d} | Batch/ Episodes 000/{num_batches:03d} | 0.0000"
         )
+        loss = 0.0
         for i, (x, _) in pbar:
             # Set the number of query samples and classes
             self.set_nquery(x)
@@ -373,15 +372,15 @@ class MetaTemplate(nn.Module, ABC):
 
             # Run one iteration of the optimization process
             optimizer.zero_grad()
-            loss = self.set_forward_loss(x)
-            loss.backward()
+            batch_loss = self.set_forward_loss(x)
+            batch_loss.backward()
             optimizer.step()
 
-            # Log the loss
-            avg_loss += loss.item()
+            # Add batch loss to total loss
+            loss += batch_loss.item()
 
             # Print the loss
-            self.log_training_progress(pbar, epoch, i, num_batches, avg_loss)
+            self.log_training_progress(pbar, epoch, i, num_batches, loss)
 
     def test_loop(
         self, test_loader: torch.utils.data.DataLoader, return_std: bool = False
@@ -405,42 +404,33 @@ class MetaTemplate(nn.Module, ABC):
         pbar = self.get_progress_bar(enumerate(test_loader), total=num_batches)
         pbar.set_description(f"Testing: Batch/ Episodes 000/{num_batches:03d} | 0.0000")
         total_correct, total_preds = 0, 0
-        for i, data in pbar:
-            # Parse the input according to the task type
-            if self.type == "classification":
-                x, _ = data
-            else:
-                x, y = data
-
+        for i, (x, _) in pbar:
             # Set the number of query samples and classes
             self.set_nquery(x)
             if self.change_way:
                 self.set_nway(x)
 
             # Compute the accuracy
-            if self.type == "classification":
-                correct, preds = self.correct(x)
-                evals.append([correct, preds])
+            correct, preds = self.correct(x)
+            evals.append([correct, preds])
 
-                total_correct += correct
-                total_preds += preds
-
-            # Compute the pearson correlation
-            else:
-                raise NotImplementedError("Regression not implemented yet")
+            total_correct += correct
+            total_preds += preds
 
             pbar.set_description(
                 f"Evaluating: Batch/ Episodes {i:03d}/{num_batches:03d} | Running Acc. {(100 * total_correct / total_preds):.2f}%"
             )
 
         # Compute the mean and standard deviation of the metric
-        metric_mean, metric_std = self.eval_test_performance(evals)
+        acc_mean, acc_std = self.eval_test_performance(evals)
+
+        wandb.log({"val/acc": acc_mean, "val/acc_std": acc_std})
 
         # Return the mean and (standard deviation) of the accuracy
         if return_std:
-            return metric_mean, metric_std
+            return acc_mean, acc_std
         else:
-            return metric_mean
+            return acc_mean
 
     def adapt(
         self,
