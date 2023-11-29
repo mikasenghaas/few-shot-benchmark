@@ -115,6 +115,7 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
     logger.info("Initialise model")
     model = instantiate(cfg.method.cls, backbone=backbone)
     model = model.to(device)
+    logger.info(f"Model: {model}")
 
     # Get train and val data loaders
     train_loader = train_dataset.get_data_loader(
