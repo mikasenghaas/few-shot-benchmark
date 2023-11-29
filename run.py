@@ -42,24 +42,24 @@ def main(cfg: DictConfig):
     best_model = train(train_loader, val_loader, model, cfg)
 
     # Test the model on the specified splits
-    results = []
+    display_table = PrettyTable(["split", "acc_mean", "acc_std"])
     for split in cfg.eval.splits:
         logger.info(f"Testing on {split} split.")
-        acc_mean, acc_std = test(cfg, best_model, split)
-        results.append([split, acc_mean, acc_std])
+        acc_mean, acc_ci, acc_std = test(cfg, best_model, split)
+        display_table.add_row(
+            [split, f"{acc_mean:.2f} ± {acc_ci:.2f}%", f"{acc_std:.2f}"]
+        )
+        wandb.log(
+            {
+                f"{split}/acc": acc_mean,
+                f"{split}/acc_std": acc_std,
+                f"{split}/acc_ci": acc_ci,
+            }
+        )
 
-    # Display training results (from W&B) in a table
-    logger.info("Log training results to W&B.")
-    table = wandb.Table(data=results, columns=["split", "acc_mean", "acc_std"])
-    wandb.log({"eval_results": table})
-
-    # Display test results in a table
-    logger.info(f"Final test results on {cfg.eval.splits} splits:\n")
-    display_table = PrettyTable(["split", "acc_mean", "acc_std"])
-    for row in results:
-        display_table.add_row(row)
     print(display_table)
 
+    # Finish W&B run
     wandb.finish()
 
 
