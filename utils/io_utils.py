@@ -158,10 +158,10 @@ def get_exp_name(cfg: OmegaConf) -> str:
     """
     Returns the experiment name to be used for logging and checkpointing.
     """
-    name = "{}-{}-{} {}-shot {}-way".format(
+    name = "{} {}{} {}-shot {}-way".format(
         cfg.dataset.name,
         cfg.method.name,
-        "SOT" if cfg.exp.use_sot else "",
+        "-SOT" if cfg.exp.use_sot else "",
         cfg.exp.n_shot,
         cfg.exp.n_way,
 
