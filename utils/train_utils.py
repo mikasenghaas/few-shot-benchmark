@@ -8,7 +8,6 @@ Includes:
     - test: Evaluation loop.
 """
 
-import time
 import os
 import math
 
@@ -22,11 +21,8 @@ from omegaconf import OmegaConf, DictConfig
 
 from utils.io_utils import (
     get_logger,
-    get_resume_file,
     model_to_dict,
     opt_to_dict,
-    get_model_file,
-    get_exp_name,
 )
 
 
@@ -54,7 +50,7 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
             )
             train_dataset = instantiate(
                 cfg.dataset.simple_cls,
-                batch_size=cfg.train.train_batch,
+                batch_size=cfg.train.batch_size,
                 mode="train",
             )
         case "meta":
@@ -107,7 +103,7 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
     )
 
     if cfg.method.name == "maml":
-        cfg.train.stop_epoch *= model.n_task  # maml use multiple tasks in one update
+        cfg.train.max_epochs *= model.n_task  # maml use multiple tasks in one update
 
     return train_loader, val_loader, model
 
@@ -136,34 +132,19 @@ def train(
     """
     logger = get_logger(__name__, cfg)
 
-    # Set checkpoint directory (based on combination of experiment name, dataset, method, model and time)
-    cfg.checkpoint.time = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-    cp_dir = os.path.join(cfg.checkpoint.dir, cfg.checkpoint.time)
-
-    # Create checkpoint directory if it doesn't exist
-    if not os.path.isdir(cp_dir):
-        os.makedirs(cp_dir)
-
     # Initialise W&B run
     logger.info("Initializing W&B")
     wandb.init(
-        name=get_exp_name(cfg),
-        group=cfg.exp.name,
+        name=cfg.name,
+        group=cfg.group,
         entity=cfg.wandb.entity,
         project=cfg.wandb.project,
         config=OmegaConf.to_container(cfg, resolve=True),
         settings=wandb.Settings(start_method="thread"),
+        dir=cfg.paths.log_dir,
         mode=cfg.wandb.mode,
     )
     wandb.define_metric("*", step_metric="epoch")
-
-    # Resume training if specified
-    if cfg.exp.resume:
-        resume_file = get_resume_file(cp_dir)
-        if resume_file is not None:
-            tmp = torch.load(resume_file)
-            cfg.train.start_epoch = tmp["epoch"] + 1
-            model.load_state_dict(tmp["state"])
 
     # Instantiate optimizer
     logger.info(f"Initialise Adam with lr {cfg.train.lr}")
@@ -174,33 +155,34 @@ def train(
     wandb.config.update({"model_details": model_to_dict(model)})
     wandb.config.update({"optimizer_details": opt_to_dict(optimizer)})
 
+    # Initialise W&B artifact for model
+    model_artifact = wandb.Artifact(name=cfg.name, type="model")
+
     # Training loop
+    best_model = None
     max_acc = -1
     logger.info("Start training")
-    for epoch in range(cfg.train.start_epoch, cfg.train.stop_epoch):
+    for epoch in range(cfg.train.max_epochs):
         wandb.log({"epoch": epoch})
         model.train()
         model.train_loop(epoch, train_loader, optimizer)
 
         # Validation loop on every val_freq or last epoch
-        if epoch % cfg.exp.val_freq == 0 or epoch == cfg.train.stop_epoch - 1:
+        if epoch % cfg.general.val_freq == 0 or epoch == cfg.train.max_epochs - 1:
             model.eval()
             acc = model.test_loop(val_loader)
-            wandb.log({"acc/val": acc})
 
             if acc > max_acc:
                 logger.info(f"New best model! (Acc. {acc:.3f} > {max_acc:.3f})")
                 max_acc = acc
-                outfile = os.path.join(cp_dir, "best_model.tar")
+                best_model = model
+                outfile = os.path.join(cfg.paths.log_dir, "best_model.tar")
                 torch.save({"epoch": epoch, "state": model.state_dict()}, outfile)
 
-        # Save model on every save_freq or last epoch
-        if epoch % cfg.exp.save_freq == 0 or epoch == cfg.train.stop_epoch - 1:
-            logger.info(f"Save model to {cp_dir}")
-            outfile = os.path.join(cp_dir, "{:d}.tar".format(epoch))
-            torch.save({"epoch": epoch, "state": model.state_dict()}, outfile)
+    # Log best model to W&B
+    model_artifact.add_dir(cfg.paths.log_dir)
 
-    return model
+    return best_model
 
 
 def test(cfg: DictConfig, model: nn.Module, split: str):
@@ -218,7 +200,6 @@ def test(cfg: DictConfig, model: nn.Module, split: str):
         acc_std: float
     """
     logger = get_logger(__name__, cfg)
-    logger.info("Starting model testing")
 
     # Instantiate test dataset
     match cfg.method.type:
@@ -234,24 +215,17 @@ def test(cfg: DictConfig, model: nn.Module, split: str):
                 f"Initialise {split} {cfg.dataset.name} dataset with {cfg.eval.n_episodes} episodes"
             )
             test_dataset = instantiate(
-                cfg.dataset.set_cls, n_episode=cfg.eval.n_episodes, mode=split
+                cfg.dataset.set_cls, n_episodes=cfg.eval.n_episodes, mode=split
             )
 
     # Get the test loader
-    logger.info("Get test loader")
     test_loader = test_dataset.get_data_loader(
         num_workers=cfg.dataset.loader.num_workers,
         pin_memory=cfg.dataset.loader.pin_memory,
     )
 
-    # Load model from checkpoint (either latest or specified)
-    logger.info("Load model from checkpoint")
-    model_file_path = get_model_file(cfg)
-    model.load_state_dict(torch.load(model_file_path)["state"])
-    model.eval()
-
     # Test loop
-    logger.info("Starting test loop")
+    model.eval()
     match cfg.eval.type:
         case "simple":
             acc_all = []
@@ -269,21 +243,5 @@ def test(cfg: DictConfig, model: nn.Module, split: str):
             acc_std = np.std(acc_all)
         case _:
             acc_mean, acc_std = model.test_loop(test_loader, return_std=True)
-
-    # Write results to file in checkpoint directory
-    path = os.path.join("checkpoints", cfg.exp.name, "results.txt")
-    logger.info(f"Write results to {path}")
-    with open(path, "a") as f:
-        timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-        exp_name = get_exp_name(cfg)
-
-        acc_str = "%4.2f%% +- %4.2f%%" % (
-            acc_mean,
-            1.96 * acc_std / np.sqrt(cfg.train.iter_num),
-        )
-        f.write(
-            "Time: %s, Setting: %s, Acc: %s, Model: %s \n"
-            % (timestamp, exp_name, acc_str, model_file_path)
-        )
 
     return acc_mean, acc_std
