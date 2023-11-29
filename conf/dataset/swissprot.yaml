@@ -1,23 +1,15 @@
-# @package _global_
-
 defaults:
   - classification_base
 
-dataset:
-  name: swissprot
-  train_classes: 7195
-  simple_cls:
-    _target_: datasets.prot.swissprot.SPSimpleDataset
+name: swissprot
+train_classes: 7195
+simple_cls:
+  _target_: datasets.prot.swissprot.SPSimpleDataset
 
-  set_cls:
-    _target_: datasets.prot.swissprot.SPSetDataset
+set_cls:
+  _target_: datasets.prot.swissprot.SPSetDataset
 
-  backbone:
-    name: FCNet
-    _target_: backbones.fcnet.FCNet
-    layer_dim: [512, 512]
-
-exp:
-  n_way: 5
-  n_shot: 5
-  n_query: 15
+backbone:
+  name: FCNet
+  _target_: backbones.fcnet.FCNet
+  layer_dim: [512, 512]

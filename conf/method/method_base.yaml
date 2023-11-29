@@ -1,14 +1,4 @@
-# @package _global_
-
 method:
-  name: ??? # Method name
+  name: ???
 
   fast_weight: False
-
-train:
-  start_epoch: 0 # Train from scratch by default
-  train_batch:
-  val_batch:
-
-eval:
-  type: set # All methods evaluate on few-shot task

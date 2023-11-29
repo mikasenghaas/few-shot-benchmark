@@ -1,9 +1,6 @@
-# @package _global_
-
 defaults:
   - meta_base
 
-method:
-  name: matchingnet
-  cls:
-    _target_: methods.matchingnet.MatchingNet
+name: matchingnet
+cls:
+  _target_: methods.matchingnet.MatchingNet

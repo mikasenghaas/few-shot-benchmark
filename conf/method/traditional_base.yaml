@@ -1,0 +1,16 @@
+# @package _global_
+
+defaults:
+  - method_base
+
+method:
+  type: baseline
+
+train:
+  max_epochs: 40 # Number of epochs to train
+  batch_size: 16 # Batch size
+
+hydra:
+  sweeper:
+    params:
+      train.batch_size: 16,32,64

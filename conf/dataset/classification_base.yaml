@@ -1,23 +1,16 @@
-# @package _global_
+name:
+type: classification
+subset: 1.0
 
-dataset:
-  name:
-  type: classification
-  subset: 1.0
+simple_cls:
+  subset: ${dataset.subset}
 
-  simple_cls:
-    subset: ${dataset.subset}
+set_cls:
+  n_way: ${n_way}
+  n_support: ${n_shot}
+  n_query: ${n_query}
+  subset: ${dataset.subset}
 
-  set_cls:
-    n_way: ${exp.n_way}
-    n_support: ${exp.n_shot}
-    n_query: ${exp.n_query}
-    subset: ${dataset.subset}
-
-  loader:
-    num_workers: 4 # Number of processes to use for data loader
-    pin_memory: true # Use with GPU
-
-# What splits to run on evaluation
-eval:
-  splits: [train, val, test]
+loader:
+  num_workers: 0 # Number of processes to use for data loader
+  pin_memory: false # Use with GPU

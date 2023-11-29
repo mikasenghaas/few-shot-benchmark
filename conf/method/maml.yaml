@@ -10,9 +10,13 @@ method:
   fast_weight: True # MAML reqires special gradient updates in backbone
   maml_inner_lr: 0.01
 
-  # For instantiate API
   cls:
     _target_: methods.maml.MAML
     n_task: ${method.n_task}
     task_update_num: ${method.task_update_num}
     inner_lr: ${method.maml_inner_lr}
+
+hydra:
+  sweeper:
+    params:
+      method.maml_inner_lr: 0. 001,0.01
