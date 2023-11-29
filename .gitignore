@@ -2,7 +2,9 @@
 .python-version
 /data
 /outputs
+/artifacts
 *.obo
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
