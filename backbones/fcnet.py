@@ -1,7 +1,8 @@
 import torch
 from torch import nn as nn
 
-from backbones.blocks import full_block, full_block_fw
+import utils
+from backbones.blocks import full_block, full_block_fw, Linear_fw
 from methods.self_optimal_transport import SOT
 
 
@@ -25,6 +26,9 @@ class FCNet(nn.Module):
         super(FCNet, self).__init__()
         self.fast_weight = fast_weight
 
+        assert sot is None or input_size is not None, "input_size must be provided if SOT is used"
+        self.sot = sot
+
         layers = []
         in_dim = x_dim
         for dim in layer_dim:
@@ -35,20 +39,14 @@ class FCNet(nn.Module):
             in_dim = dim
 
         self.encoder = nn.Sequential(*layers)
-        self.final_feat_dim = layer_dim[-1]
-
-        assert sot is None or input_size is not None, "input_size must be provided if SOT is used"
-        self.sot = sot
-        if self.sot is not None:
-            self.linear = torch.nn.Linear(input_size, self.final_feat_dim)
+        self.final_feat_dim = layer_dim[-1] if self.sot is None else input_size
 
     def forward(self, x):
         x = self.encoder(x)
-        x = x.view(x.size(0), -1) # (input_size, layer_dim[-1])
+        x = x.view(x.size(0), -1)  # (input_size, layer_dim[-1])
         # Apply SOT if provided
         if self.sot is not None:
             x = self.sot(x)  # (input_size, input_size)
-            x = self.linear(x) # (input_size, layer_dim[-1])
         return x
 
 
