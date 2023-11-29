@@ -46,12 +46,15 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
     """
     logger = get_logger(__name__, cfg)
 
-    # handle batch size, batch size must be None or auto if exp.use_sot is True
-    if cfg.exp.use_sot and cfg.train.train_batch is not None:
-        raise ValueError('batch size can not be defined if exp.use_sot is True\n'
+    # handle batch size, which in baseline models sets output size of sot and therefore can not be defined as
+    # we want all models to use n_way * (n_support + n_query) as sot output size
+    if (cfg.exp.use_sot and cfg.train.train_batch is not None and cfg.method.type == "baseline"):
+        raise ValueError('batch size can not be defined when using SOT with baseline methods,\n'
+                         'because batch size determines sot output size,\n'
+                         'which we want to be n_way * (n_support + n_query) for all models\n'
                          'either set exp.use_sot=False or set train.train_batch=null\n'
                          'if null batch will be set to n_way * (n_support + n_query)')
-    if cfg.train.train_batch is None:
+    if cfg.train.train_batch is None and cfg.method.type == "baseline":
         cfg.train.train_batch = cfg.exp.n_way * (cfg.exp.n_shot + cfg.exp.n_query)
         cfg.train.val_batch = cfg.exp.n_way * (cfg.exp.n_shot + cfg.exp.n_query)
         cfg.train.test_batch = cfg.exp.n_way * (cfg.exp.n_shot + cfg.exp.n_query)
