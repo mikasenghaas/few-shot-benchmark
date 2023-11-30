@@ -24,7 +24,6 @@ class FCNet(nn.Module):
             layer_dim: list of hidden dimensions
             dropout: dropout rate
             fast_weight: whether to use fast weight (temporary parameters used to update initial parameters in MAML)
-            sot: SOT object for computing the SOT features
         """
         super(FCNet, self).__init__()
         self.fast_weight = fast_weight
@@ -39,21 +38,13 @@ class FCNet(nn.Module):
             in_dim = dim
 
         self.encoder = nn.Sequential(*layers)
-        self.final_feat_dim = layer_dim[-1]
-        # TODO add SOT
-        # self.sot = sot
-        # if self.sot is not None:
-        #     self.sot_lin = nn.Linear(self.sot.dim, self.final_feat_dim, bias=False)
+        self.final_feat_dim = layer_dim[-1] 
 
     def forward(self, x):
         N, D = x.shape
         x = self.encoder(x)
         x = x.view(x.size(0), -1)
 
-        # TODO add SOT
-        # if self.sot is not None:
-        #     x = self.sot(x)
-        #     x = self.sot_lin(x)
         return x
 
 

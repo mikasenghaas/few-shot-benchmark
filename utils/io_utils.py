@@ -14,6 +14,8 @@ import torch
 from omegaconf import OmegaConf, open_dict
 from torch import nn
 
+from typing import Union
+
 
 def get_assigned_file(checkpoint_dir: str, num: int) -> str:
     """
@@ -220,7 +222,7 @@ def check_cfg(cfg: OmegaConf) -> None:
         assert key in cfg, f"Missing mandatory key: {key}"
 
 
-def get_device(device: str | None = None) -> torch.device:
+def get_device(device: Union[str, None] = None) -> torch.device:
     """
     Get device to train on. If device is specified, use that. Otherwise, use
     the first available device from the following list: ["cuda", "mps", "cpu"].
