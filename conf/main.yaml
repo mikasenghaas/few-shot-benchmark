@@ -8,7 +8,7 @@ group: ??? # Group the experiment should be associated to
 # Experiment configuration
 dataset: ??? # Dataset to use (swissprot, tabula_muris)
 method: ??? # Method to use (baseline, baseline_pp, matchingnet, protonet, maml)
-sot: ??? # Whether to use the SOT transform or not (true, false)
+use_sot: ??? # Whether to use the SOT transform or not (true, false)
 n_way: ??? # Number of classes to distinguish in few-shot learning
 n_shot: ??? # Number of support samples per class to train on
 
@@ -48,3 +48,13 @@ hydra:
   sweeper:
     params:
       train.lr: 0.001,0.1
+
+sot:
+  cls:
+    _target_: methods.sot.SOT
+    distance_metric: cosine
+    ot_reg: 0.1
+    sinkhorn_iterations: 10
+    sigmoid: false
+    mask_diag: true
+    max_scale: true

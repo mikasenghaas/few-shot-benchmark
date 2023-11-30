@@ -7,7 +7,6 @@ method:
   type: baseline
 
 train:
-  max_epochs: 40 # Number of epochs to train
   batch_size: 16 # Batch size
 
 hydra:

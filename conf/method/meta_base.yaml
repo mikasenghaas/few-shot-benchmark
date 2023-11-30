@@ -9,6 +9,3 @@ method:
   cls:
     n_way: ${n_way}
     n_support: ${n_shot}
-
-train:
-  max_epochs: 60
