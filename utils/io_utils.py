@@ -165,14 +165,16 @@ def get_exp_name(cfg: OmegaConf) -> Tuple[str, Dict]:
     """
     method = cfg.method.name
     dataset = cfg.dataset.name
-    sot = cfg.sot
+    use_sot = cfg.use_sot
     n_way = cfg.n_way
     n_shot = cfg.n_shot
-    exp_name = f"{method}-{dataset}{'-sot' if sot else ''}-{n_way}-way-{n_shot}-shot"
+    exp_name = (
+        f"{method}-{dataset}{'-sot' if use_sot else ''}-{n_way}-way-{n_shot}-shot"
+    )
     exp_params = {
         "method": method,
         "dataset": dataset,
-        "sot": sot,
+        "use_sot": use_sot,
         "n_way": n_way,
         "n_shot": n_shot,
     }
@@ -214,7 +216,7 @@ def check_cfg(cfg: OmegaConf) -> None:
         "group",
         "method",
         "dataset",
-        "sot",
+        "use_sot",
         "n_way",
         "n_shot",
     ]

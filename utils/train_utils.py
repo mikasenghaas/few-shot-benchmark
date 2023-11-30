@@ -54,7 +54,9 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
             logger.info(
                 f"Initializing train {cfg.dataset.set_cls._target_}. (Using {(100 * cfg.dataset.subset):.0f}%)"
             )
-            train_dataset = instantiate(cfg.dataset.set_cls, mode="train")
+            train_dataset = instantiate(
+                cfg.dataset.set_cls, mode="train", n_episodes=100
+            )
         case _:
             raise ValueError(f"Unknown method type: {cfg.method.type}")
 
@@ -73,18 +75,14 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
             logger.info(
                 f"Initializing val {cfg.dataset.set_cls._target_}. (Using {(100 * cfg.dataset.subset):.0f}%)"
             )
-            val_dataset = instantiate(cfg.dataset.set_cls, mode="val")
+            val_dataset = instantiate(cfg.dataset.set_cls, mode="val", n_episodes=100)
 
     sot = None
-    if cfg.exp.use_sot:
-        logger.info("Using SOT")
-        # dim is n_way * (n_support * n_query)
-        sot = instantiate(
-            cfg.sot.cls,
-            n_way=cfg.dataset.set_cls.n_way,
-            n_support=cfg.dataset.set_cls.n_support,
-            n_query=cfg.dataset.set_cls.n_query,
-        )
+    if cfg.use_sot:
+        logger.info("Initialising SOT")
+        # Transformed feature dim is batch size which for episodic training is: n_way * (n_support + n_query)
+        final_feat_dim = cfg.n_way * (cfg.n_shot + cfg.n_query)
+        sot = instantiate(cfg.sot.cls, final_feat_dim=final_feat_dim)
 
     # Instantiate backbone (For MAML, need to instantiate backbone with fast weight)
     logger.info(f"Initialise backbone {cfg.dataset.backbone._target_}")
@@ -97,7 +95,7 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
 
     # Instatiante model with backbone
     logger.info(f"Initialise method {cfg.method.cls._target_}")
-    model = instantiate(cfg.method.cls, backbone=backbone)
+    model = instantiate(cfg.method.cls, backbone=backbone, sot=sot)
     model = model.to(device)
 
     # Get train and val data loaders
