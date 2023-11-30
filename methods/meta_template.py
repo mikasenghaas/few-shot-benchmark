@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-from .self_optimal_transport import SOT
+from .sot import SOT
 
 
 class MetaTemplate(nn.Module, ABC):
@@ -19,7 +19,6 @@ class MetaTemplate(nn.Module, ABC):
         n_way: int,
         n_support: int,
         change_way: bool = True,
-        log_wandb: bool = True,
         print_freq: int = 1,
         type: str = "classification",
         sot: SOT = None,

@@ -1,5 +1,4 @@
 # this code is from https://github.com/DanielShalam/SOT
-import numpy as np
 import torch
 
 
