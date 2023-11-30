@@ -5,7 +5,7 @@ Run group of experiments.
 '
 
 # Experiment Parameters (with hyperparameter grid for method and dataset)
-group=first-results
+group=local
 n_way=5
 n_shot=5
 sot=( false true ) 
@@ -24,7 +24,7 @@ do
             dataset=$dataset \
             use_sot=$use_sot \
             n_way=$n_way \
-            n_shot=$n_shot \
+            n_shot=$n_shot
         done
     done
 done
