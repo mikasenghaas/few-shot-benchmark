@@ -2,6 +2,7 @@ import torch
 from torch import nn as nn
 
 from backbones.blocks import full_block, full_block_fw
+from methods.self_optimal_transport import SOT
 
 
 class FCNet(nn.Module):
@@ -23,6 +24,7 @@ class FCNet(nn.Module):
             layer_dim: list of hidden dimensions
             dropout: dropout rate
             fast_weight: whether to use fast weight (temporary parameters used to update initial parameters in MAML)
+            sot: SOT object for computing the SOT features
         """
         super(FCNet, self).__init__()
         self.fast_weight = fast_weight
@@ -38,10 +40,21 @@ class FCNet(nn.Module):
 
         self.encoder = nn.Sequential(*layers)
         self.final_feat_dim = layer_dim[-1]
+        # TODO add SOT
+        # self.sot = sot
+        # if self.sot is not None:
+        #     self.sot_lin = nn.Linear(self.sot.dim, self.final_feat_dim, bias=False)
 
     def forward(self, x):
+        N, D = x.shape
         x = self.encoder(x)
-        return x.view(x.size(0), -1)
+        x = x.view(x.size(0), -1)
+
+        # TODO add SOT
+        # if self.sot is not None:
+        #     x = self.sot(x)
+        #     x = self.sot_lin(x)
+        return x
 
 
 class EnFCNet(nn.Module):
