@@ -7,8 +7,8 @@ method:
   type: meta
 
   cls:
-    n_way: ${exp.n_way}
-    n_support: ${exp.n_shot}
+    n_way: ${n_way}
+    n_support: ${n_shot}
 
 train:
-  stop_epoch: 60
+  max_epochs: 60

@@ -138,31 +138,34 @@ class Baseline(MetaTemplate):
             avg_loss (float): the average loss over the epoch
         """
 
-        # Initialize tracking variables
-        avg_loss = 0
-
         # Train loop
         num_batches = len(train_loader)
         pbar = self.get_progress_bar(enumerate(train_loader), total=num_batches)
         pbar.set_description(
-            f"Epoch {epoch:03d} | Batch/ Episodes 000/{num_batches:03d} | 0.0000"
+            f"Epoch {epoch:03d} | Batch 000/{num_batches:03d} | 0.0000"
         )
+        loss = 0.0
         for i, (x, y) in pbar:
             # Forward the data through the model and compute the loss
             optimizer.zero_grad()
-            loss = self.set_forward_loss(x, y)
+            batch_loss = self.set_forward_loss(x, y)
 
             # Backpropagate the loss
-            loss.backward()
+            batch_loss.backward()
             optimizer.step()
 
             # Log the loss
-            avg_loss = avg_loss + loss.item()
+            loss += batch_loss.item()
 
             # Print the loss
-            self.log_training_progress(pbar, epoch, i, num_batches, avg_loss)
+            self.log_training_progress(
+                pbar, epoch, i, num_batches, loss, few_shot=False
+            )
 
-        return avg_loss / len(train_loader)
+        # Compute the average loss
+        epoch_loss = loss / num_batches
+
+        return epoch_loss
 
     def set_forward(self, x: torch.Tensor, y: torch.Tensor = None) -> torch.Tensor:
         """

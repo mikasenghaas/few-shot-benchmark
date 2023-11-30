@@ -2,8 +2,9 @@
 .python-version
 /data
 /outputs
-/wandb
-/checkpoints
+/artifacts
+*.obo
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

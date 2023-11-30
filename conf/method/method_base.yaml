@@ -1,24 +1,4 @@
-# @package _global_
-
 method:
-  name: ??? # Method name
+  name: ???
+
   fast_weight: False
-
-sot:
-  cls:
-    _target_: methods.self_optimal_transport.SOT
-    distance_metric: cosine
-    ot_reg: 0.1 # default 0.1
-    sinkhorn_iterations: 10
-    sigmoid:  False
-    mask_diag: True
-    max_scale: True
-
-
-train:
-  start_epoch: 0 # Train from scratch by default
-  train_batch:
-  val_batch:
-
-eval:
-  type: set # All methods evaluate on few-shot task
