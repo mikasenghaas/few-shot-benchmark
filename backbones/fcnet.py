@@ -38,7 +38,7 @@ class FCNet(nn.Module):
             in_dim = dim
 
         self.encoder = nn.Sequential(*layers)
-        self.final_feat_dim = layer_dim[-1] 
+        self.final_feat_dim = layer_dim[-1]
 
     def forward(self, x):
         N, D = x.shape

@@ -11,6 +11,7 @@ from torch.autograd import Variable
 
 from .self_optimal_transport import SOT
 
+
 class MetaTemplate(nn.Module, ABC):
     def __init__(
         self,
@@ -21,7 +22,7 @@ class MetaTemplate(nn.Module, ABC):
         log_wandb: bool = True,
         print_freq: int = 1,
         type: str = "classification",
-        sot : SOT = None,
+        sot: SOT = None,
     ):
         """
         Base class for the meta-learning methods.
@@ -44,7 +45,9 @@ class MetaTemplate(nn.Module, ABC):
         self.n_support = n_support
         self.n_query = -1  # (change depends on input)
         self.feature = backbone
-        self.feat_dim = self.feature.final_feat_dim if sot is None else sot.final_feat_dim
+        self.feat_dim = (
+            self.feature.final_feat_dim if sot is None else sot.final_feat_dim
+        )
         self.change_way = change_way  # some methods allow different_way classification during training and test
         self.type = type
         self.SOT = sot
@@ -124,7 +127,7 @@ class MetaTemplate(nn.Module, ABC):
 
             # Apply SOT if provided
             if self.SOT is not None:
-                z_all = self.SOT(z_all) # Returns square matrix
+                z_all = self.SOT(z_all)  # Returns square matrix
 
             # Now reshape back the tensor to (n_way, n_support + n_query, feat_dim)
             z_all = z_all.view(self.n_way, self.n_support + self.n_query, -1)

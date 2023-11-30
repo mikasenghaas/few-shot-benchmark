@@ -6,13 +6,14 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
+
 def extract_runid(run: Run) -> str:
     """
     Extracts the run id from a W&B run.
 
     Args:
         run (Run): W&B run object
-    
+
     Returns:
         run_id (str): Run id of the given run
     """
@@ -51,7 +52,7 @@ def extract_metrics(run: Run) -> dict:
 
     Args:
         run (Run): W&B run object
-    
+
     Returns:
         metrics (dict): Dictionary of metrics
     """
@@ -64,7 +65,7 @@ def load_to_df(runs: list[Run]) -> pd.DataFrame:
 
     Args:
         runs (list[Run]): List of W&B runs
-    
+
     Returns:
         df (pd.DataFrame): DataFrame containing all runs
     """
@@ -83,7 +84,9 @@ def load_to_df(runs: list[Run]) -> pd.DataFrame:
     return df
 
 
-def download_artifact(api : Api, wandb_entity : str, wandb_project : str, artifact_dir : str , run_id: str) -> torch.nn.Module:
+def download_artifact(
+    api: Api, wandb_entity: str, wandb_project: str, artifact_dir: str, run_id: str
+) -> torch.nn.Module:
     """
     Downloads given artifact from W&B API to the given directory.
 
@@ -99,32 +102,36 @@ def download_artifact(api : Api, wandb_entity : str, wandb_project : str, artifa
     artifact.download(root=path)
 
 
-def init_dataloader(cfg: dict, root_dir : str, mode : str = "train") -> torch.utils.data.DataLoader:
+def init_dataloader(
+    cfg: dict, root_dir: str, mode: str = "train"
+) -> torch.utils.data.DataLoader:
     """
     Initialize dataloader for given split using the hydra config.
 
     Args:
         cfg: Hydra config
         mode: Split to use
-    
+
     Returns:
         Dataloader for given split
     """
 
-    dataset = hydra.utils.instantiate(cfg["dataset"]["set_cls"], mode=mode, root=os.path.join(root_dir, "data"))
+    dataset = hydra.utils.instantiate(
+        cfg["dataset"]["set_cls"], mode=mode, root=os.path.join(root_dir, "data")
+    )
     dataloader = dataset.get_data_loader(**cfg["dataset"]["loader"])
 
     return dataset, dataloader
 
 
-def init_model(cfg: dict, dim : int) -> torch.nn.Module:
+def init_model(cfg: dict, dim: int) -> torch.nn.Module:
     """
     Initialize model using the hydra config.
 
     Args:
         cfg (dict): Hydra config
         dim (int): Dimension of input data
-    
+
     Returns:
         model (torch.nn.Module) : Model initialized with given config
     """
@@ -133,14 +140,17 @@ def init_model(cfg: dict, dim : int) -> torch.nn.Module:
 
     return model
 
-def init_run(run_config : dict, root_dir : str, data_mode : str = "test") -> tuple[torch.utils.data.Dataset, torch.utils.data.DataLoader, torch.nn.Module]:
+
+def init_run(
+    run_config: dict, root_dir: str, data_mode: str = "test"
+) -> tuple[torch.utils.data.Dataset, torch.utils.data.DataLoader, torch.nn.Module]:
     """
     Initialize run by initializing dataloader and model.
 
     Args:
         run_config (dict): Hydra config
         data_mode (str): Split to use
-    
+
     Returns:
         dataset (torch.utils.data.Dataset): Dataset for given split
         loader (torch.utils.data.DataLoader): Dataloader for given split
@@ -153,14 +163,16 @@ def init_run(run_config : dict, root_dir : str, data_mode : str = "test") -> tup
     return dataset, loader, model
 
 
-def eval_run(model : torch.nn.Module, test_loader : torch.utils.data.DataLoader) -> list[tuple[np.ndarray, np.ndarray]]:
+def eval_run(
+    model: torch.nn.Module, test_loader: torch.utils.data.DataLoader
+) -> list[tuple[np.ndarray, np.ndarray]]:
     """
     Evaluates the given model on the given dataloader.
 
     Args:
         model (torch.nn.Module): Model to evaluate
         test_loader (torch.utils.data.DataLoader): Dataloader to use for evaluation
-    
+
     Returns:
         episodes_results (list): List of tuples containing the ground truth and predictions for each episode
     """
@@ -175,9 +187,9 @@ def eval_run(model : torch.nn.Module, test_loader : torch.utils.data.DataLoader)
             model.set_nway(x)
 
         # Get ground truth along with mapping from index to encoding
-        y_true = y[:, model.n_support:]
+        y_true = y[:, model.n_support :]
         unq = torch.unique(y_true, dim=1).cpu().numpy()[:, 0]
-        idx2encoding = {idx : encoding for idx, encoding in enumerate(unq)}
+        idx2encoding = {idx: encoding for idx, encoding in enumerate(unq)}
         y_true = y_true.reshape(model.n_way * model.n_query).cpu().numpy()
 
         # Get predictions and map them from index to encoding
@@ -188,35 +200,37 @@ def eval_run(model : torch.nn.Module, test_loader : torch.utils.data.DataLoader)
 
         # Save to evals
         episodes_results.append((y_true, y_pred))
-    
+
     return episodes_results
 
-def compute_metrics(metric_fns : list[tuple], episodes_results : list[tuple]) -> pd.DataFrame:
+
+def compute_metrics(
+    metric_fns: list[tuple], episodes_results: list[tuple]
+) -> pd.DataFrame:
     """
     Evaluates the given model on the given dataloader.
 
     Args:
         metric_fns (list[tuple]): List of tuples containing the metric function and kwargs
         episodes_results (list[tuple]): List of tuples containing the ground truth and predictions for each episode
-    
+
     Returns:
         df (pd.DataFrame): DataFrame containing the computed metrics for each episode.
     """
-    
-
 
     # Save the evals in a dict
     all_evals = dict()
     for metric_fn, kwargs in metric_fns:
-
         # Parse kwargs
         kwargs = kwargs if kwargs is not None else {}
 
         # Get the metric name
-        metric_name = " ".join(metric_fn.__name__.capitalize().split('_'))
+        metric_name = " ".join(metric_fn.__name__.capitalize().split("_"))
 
         # Eval the episodes using the metric fn
-        episodes_evals = [metric_fn(y_true, y_pred, **kwargs) for y_true, y_pred in episodes_results]
+        episodes_evals = [
+            metric_fn(y_true, y_pred, **kwargs) for y_true, y_pred in episodes_results
+        ]
 
         # Save the evals
         all_evals[metric_fn.__name__] = episodes_evals

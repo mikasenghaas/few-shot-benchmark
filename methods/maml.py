@@ -61,14 +61,15 @@ class MAML(MetaTemplate):
         # Define the device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-    def parse_feature(self, x : Union[List[torch.Tensor], torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def parse_feature(
+        self, x: Union[List[torch.Tensor], torch.Tensor]
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Split the input into support and query sets and flatten.
 
         Args:
             x (Union[List[torch.Tensor], torch.Tensor]) : input of shape (n_way, n_support + n_query, feat_dim)
-        
+
         Returns:
             x_support (torch.Tensor) : support set of shape (n_way * n_support, feat_dim)
             x_query (torch.Tensor) : query set of shape (n_way * n_query, feat_dim)

@@ -4,10 +4,19 @@ import torch
 
 
 class SOT(object):
-    supported_distances = ['cosine', 'euclidean']
+    supported_distances = ["cosine", "euclidean"]
 
-    def __init__(self, final_feat_dim : int, distance_metric: str = 'cosine', ot_reg: float = 0.1, sinkhorn_iterations: int = 10,
-                 sigmoid: bool = False, mask_diag: bool = True, max_scale: bool = True, **kwargs):
+    def __init__(
+        self,
+        final_feat_dim: int,
+        distance_metric: str = "cosine",
+        ot_reg: float = 0.1,
+        sinkhorn_iterations: int = 10,
+        sigmoid: bool = False,
+        mask_diag: bool = True,
+        max_scale: bool = True,
+        **kwargs
+    ):
         """
         Self-Optimal Transport (SOT) features.
 
@@ -95,6 +104,7 @@ class SOT(object):
         else:
             C = torch.mm(d_n, d_n.transpose(0, 1))
         return C
+
 
 def log_sum_exp(u: torch.Tensor, dim: int):
     # Reduce log sum exp along axis
