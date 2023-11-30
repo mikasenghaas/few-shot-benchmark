@@ -84,11 +84,13 @@ def get_term_frequency(root, reader):
 
 def select_annot_via_ic(annots, term_frequency, max_freq):
     # lower is more informative
-    annots.sort(key=lambda x: term_frequency.get(x, max_freq + 1))
-    return annots[0]
+    annots_with_freq = [(term_frequency.get(a, max_freq + 1), a) for a in annots]
+    # sort by frequency
+    annots_with_freq.sort()
+    return annots_with_freq[0][1]
 
 
-def get_samples_using_ic(root: str, level: int = 5) -> list[ProtSample]:
+def get_samples_using_ic(root: str) -> list[ProtSample]:
     """
     Loads all samples from the data directory and returns a list of ProtSample objects.
     Requires that the data directory contains the following files:
@@ -102,30 +104,15 @@ def get_samples_using_ic(root: str, level: int = 5) -> list[ProtSample]:
     Returns:
         samples (list[ProtSample]): list of ProtSample objects
     """
-
-    # Initialise paths
-    uniprot_sprot_path = os.path.join(root, "uniprot_sprot.fasta")
-    goa_uniprot_path = os.path.join(
+    samples = []
+    fasta = SeqIO.parse(open(os.path.join(root, "uniprot_sprot.fasta")), "fasta")
+    reader = GafReader(
         os.path.join(root, "filtered_goa_uniprot_all_noiea.gaf")
-    )
-    sprot_ancestors_path = os.path.join(root, "sprot_ancestors.txt")
+    ).read_gaf()
+    adict = get_ancestor_dict(os.path.join(root, "sprot_ancestors.txt"))
 
-    # Read files
-    fasta = SeqIO.parse(open(uniprot_sprot_path), "fasta")
-    adict = get_ancestor_dict(sprot_ancestors_path)
-
-    # Read GAF file (ignore stdout)
-    f = open(os.devnull, "w")
-    sys.stdout = f
-    reader = GafReader(goa_uniprot_path).read_gaf()
-    sys.stdout = sys.__stdout__
-    f.close()
-
-    # Get term frequency
     term_frequency, max_freq = get_term_frequency(root, reader)
 
-    # Iterate over all samples in the uniprot_sprot.fasta file
-    samples = []
     for i in fasta:
         entry = i.id.split("|")[1]
         try:
@@ -184,7 +171,7 @@ def get_samples(root, level=5):
                         entry=entry,
                     )
                 )
-            except:
+            except Exception as _:
                 continue
     return samples
 
@@ -241,15 +228,10 @@ def get_embedding(emb_path, entry):
     return emb
 
 
-def encodings(root, level=5, is_ic=True):
+def encodings(root, level=5):
     """Returns dictionary of label encodings of annotations"""
     adict = get_ancestor_dict(os.path.join(root, "sprot_ancestors.txt"))
-
-    # Perform level filtering if neccessary
-    if is_ic:
-        all_annots = set(adict.keys())
-    else:
-        all_annots = get_level(set(adict.keys()), level)
+    all_annots = get_level(set(adict.keys()), level)
 
     for key, value in adict.items():
         all_annots |= value
