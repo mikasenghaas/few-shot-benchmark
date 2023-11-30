@@ -1,11 +1,11 @@
 #!/bin/bash
 
 : '
-Run group of experiments.
+Run group of experiments on GCP VM.
 '
 
 # Experiment Parameters (with hyperparameter grid for method and dataset)
-group=local
+group=gcp
 n_way=5
 n_shot=5
 sot=( false true ) 
@@ -24,7 +24,8 @@ do
             dataset=$dataset \
             use_sot=$use_sot \
             n_way=$n_way \
-            n_shot=$n_shot
+            n_shot=$n_shot \
+            general.device=cuda
         done
     done
 done
