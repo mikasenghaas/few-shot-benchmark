@@ -60,23 +60,13 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
         case _:
             raise ValueError(f"Unknown method type: {cfg.method.type}")
 
-    # Instantiate val dataset
-    match cfg.eval.type:
-        case "simple":
-            logger.info(
-                f"Initializing val {cfg.dataset.simple_cls._target_}. (Using {(100 * cfg.dataset.subset):.0f}%)"
-            )
-            val_dataset = instantiate(
-                cfg.dataset.simple_cls,
-                batch_size=cfg.train.val_batch,
-                mode="val",
-            )
-        case _:
-            logger.info(
-                f"Initializing val {cfg.dataset.set_cls._target_}. (Using {(100 * cfg.dataset.subset):.0f}%)"
-            )
-            val_dataset = instantiate(cfg.dataset.set_cls, mode="val", n_episodes=100)
+    # Instantiate val dataset (few-shot)
+    logger.info(
+        f"Initializing val {cfg.dataset.set_cls._target_}. (Using {(100 * cfg.dataset.subset):.0f}%)"
+    )
+    val_dataset = instantiate(cfg.dataset.set_cls, mode="val", n_episodes=100)
 
+    # Initialise SOT (if specified)
     sot = None
     if cfg.use_sot:
         logger.info("Initialising SOT")
