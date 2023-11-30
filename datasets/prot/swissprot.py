@@ -46,12 +46,11 @@ class SPDataset(FewShotDataset, ABC):
 
     def load_swissprot(
         self,
-        level: int = 5,
+        level: int = 5,  # Not used
         mode: str = "train",
         min_samples: int = 20,
         subset: bool = 1.0,
         seed: int = 42,
-        use_ic_selection: bool = True,
     ):
         """
         Loads the SwissProt dataset from the data directory. If the data has
@@ -68,24 +67,16 @@ class SPDataset(FewShotDataset, ABC):
             mode (str): train, val, or test
             min_samples (int): minimum number of samples per class
             subset (float): ratio of the data to load (e.g. 0.1 for 10%)
-            use_ic_selection (bool): whether to use informativity of the label for label selection for given sample
 
         Returns:
             samples (np.ndarray): list of SwissProt samples (including id, input sequence and target)
         """
         # Load all samples from the data directory
-        ic_str = "_ic" if use_ic_selection else "_lvl"
-        processed_path = os.path.join(
-            self.data_dir, "processed", f"swissprot{ic_str}.pkl"
-        )
+        processed_path = os.path.join(self.data_dir, "processed", "swissprot.pkl")
         os.makedirs(os.path.dirname(processed_path), exist_ok=True)
         if not os.path.exists(processed_path):
             print("Did not find processed data. Processing SwissProt data now...")
-            if use_ic_selection:
-                print("NB: Using IC label selection for each entry!")
-                samples = get_samples_using_ic(root=self.data_dir, level=level)
-            else:
-                samples = get_samples(root=self.data_dir)
+            samples = get_samples_using_ic(root=self.data_dir)
             pickle.dump(samples, open(processed_path, "wb"))
 
         # Load the processed samples
@@ -124,7 +115,6 @@ class SPSimpleDataset(SPDataset):
         mode: str = "train",
         min_samples: int = 20,
         subset: float = 1.0,
-        use_ic_selection: bool = True,
     ):
         """
         Initializes the dataset by loading the entire dataset into memory and all encodings
@@ -146,9 +136,8 @@ class SPSimpleDataset(SPDataset):
             mode=mode,
             min_samples=min_samples,
             subset=subset,
-            use_ic_selection=use_ic_selection,
         )
-        self.trg2idx = encodings(self.data_dir, is_ic=use_ic_selection)
+        self.trg2idx = encodings(self.data_dir)
 
         # Save parameters
         self.batch_size = batch_size
@@ -231,7 +220,6 @@ class SPSetDataset(SPDataset):
         root: str = "./data",
         mode: str = "train",
         subset: float = 1.0,
-        use_ic_selection: bool = True,
     ):
         """
 
@@ -243,7 +231,6 @@ class SPSetDataset(SPDataset):
             root (str): path to the data directory to download the raw data in. (Default: `./data/`)
             mode (str): train, val, or test
             subset (float): ratio of the data to load (e.g. 0.1 for 10%)
-            use_ic_selection (bool): whether to use informativity of the label for label selection for given sample
         """
         # Initialise the data directory
         self.initialize_data_dir(root, download_flag=False)
@@ -254,14 +241,13 @@ class SPSetDataset(SPDataset):
         min_samples = n_support + n_query
 
         # Save encoding
-        self.trg2idx = encodings(self.data_dir, is_ic=use_ic_selection)
+        self.trg2idx = encodings(self.data_dir)
 
         # Load all samples
         samples = self.load_swissprot(
             mode=mode,
             min_samples=min_samples,
             subset=subset,
-            use_ic_selection=use_ic_selection,
         )
         self.annotations = get_ids(samples)
 
