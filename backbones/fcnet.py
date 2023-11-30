@@ -2,12 +2,20 @@ import torch
 from torch import nn as nn
 
 from backbones.blocks import full_block, full_block_fw
+from methods.self_optimal_transport import SOT
 
 
 class FCNet(nn.Module):
     fast_weight = False  # Default
 
-    def __init__(self, x_dim: int, layer_dim: list = [64, 64], dropout: float = 0.2, fast_weight: bool = False, **kwargs):
+    def __init__(
+        self,
+        x_dim: int,
+        layer_dim: list = [64, 64],
+        dropout: float = 0.2,
+        fast_weight: bool = False,
+        **kwargs
+    ):
         """
         Fully connected network for feature extraction. The network is composed of a series of fully connected layers.
 
