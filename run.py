@@ -36,16 +36,28 @@ def main(cfg: DictConfig):
 
     # Initialise data loader and model
     device = get_device(cfg.general.device)
-    train_loader, val_loader, model = initialize_dataset_model(cfg, device)
+    train_dataset, val_dataset, test_dataset, model = initialize_dataset_model(
+        cfg, device
+    )
 
     # Train the model if specified
-    best_model = train(train_loader, val_loader, model, cfg)
+    best_model = train(train_dataset, val_dataset, model, cfg)
 
     # Test the model on the specified splits
     display_table = PrettyTable(["split", "acc_mean", "acc_std"])
     for split in cfg.eval.splits:
         logger.info(f"Testing on {split} split.")
-        acc_mean, acc_ci, acc_std = test(cfg, best_model, split)
+        dataset = (
+            test_dataset
+            if split == "test"
+            else (val_dataset if split == "val" else train_dataset)
+        )
+        acc_mean, acc_ci, acc_std = test(
+            cfg,
+            best_model,
+            dataset,
+            split,
+        )
         display_table.add_row(
             [split, f"{acc_mean:.2f} ± {acc_ci:.2f}%", f"{acc_std:.2f}"]
         )

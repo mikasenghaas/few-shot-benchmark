@@ -16,6 +16,7 @@ import wandb
 from hydra.utils import instantiate
 from omegaconf import OmegaConf, DictConfig
 
+import datasets
 from utils.io_utils import (
     get_logger,
     model_to_dict,
@@ -33,8 +34,8 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
         device: torch.device
 
     Returns:
-        train_loader: torch.utils.data.DataLoader
-        val_loader: torch.utils.data.DataLoader
+        train_dataset: datasets.dataset.FewShotDataset
+        val_dataset: datasets.dataset.FewShotDataset
         model: torch.nn.Module
     """
     logger = get_logger(__name__, cfg)
@@ -94,25 +95,17 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
     model = instantiate(cfg.method.cls, backbone=backbone, sot=sot)
     model = model.to(device)
 
-    # Get train and val data loaders
-    train_loader = train_dataset.get_data_loader(
-        num_workers=cfg.dataset.loader.num_workers,
-        pin_memory=cfg.dataset.loader.pin_memory,
-    )
-    val_loader = val_dataset.get_data_loader(
-        num_workers=cfg.dataset.loader.num_workers,
-        pin_memory=cfg.dataset.loader.pin_memory,
-    )
-
     if cfg.method.name == "maml":
         cfg.train.max_epochs *= model.n_task  # maml use multiple tasks in one update
 
-    return train_loader, val_loader, model
+    return train_dataset, val_dataset, test_dataset, model
 
 
 def train(
-    train_loader: DataLoader,
-    val_loader: DataLoader,
+    train_dataset: datasets.cell.tabula_muris.TMSetDataset
+    | datasets.prot.swissprot.SPSetDataset,
+    val_dataset: datasets.cell.tabula_muris.TMSetDataset
+    | datasets.prot.swissprot.SPSetDataset,
     model: nn.Module,
     cfg: DictConfig,
 ):
@@ -124,8 +117,8 @@ def train(
     and model.
 
     Args:
-        train_loader: torch.utils.data.DataLoader
-        val_loader: torch.utils.data.DataLoader
+        train_dataset: datasets.cell.tabula_muris.TMSetDataset | datasets.prot.swissprot.SPSetDataset
+        val_dataset: datasets.cell.tabula_muris.TMSetDataset | datasets.prot.swissprot.SPSetDataset
         model: torch.nn.Module
         cfg: Hydra config object
 
@@ -133,6 +126,18 @@ def train(
         model: torch.nn.Module
     """
     logger = get_logger(__name__, cfg)
+
+    # Get the train and val loaders
+    train_loader = train_dataset.get_data_loader(
+        num_workers=cfg.dataset.loader.num_workers,
+        pin_memory=cfg.dataset.loader.pin_memory,
+        episodes=100,
+    )
+    val_loader = val_dataset.get_data_loader(
+        num_workers=cfg.dataset.loader.num_workers,
+        pin_memory=cfg.dataset.loader.pin_memory,
+        episodes=100,
+    )
 
     # Initialise W&B run
     logger.info("Initializing W&B")
@@ -190,7 +195,13 @@ def train(
     return best_model
 
 
-def test(cfg: DictConfig, model: nn.Module, split: str):
+def test(
+    cfg: DictConfig,
+    model: nn.Module,
+    dataset: datasets.cell.tabula_muris.TMSetDataset
+    | datasets.prot.swissprot.SPSetDataset,
+    split: str,
+):
     """
     Test loop. Loads model from checkpoint and evaluates on test data.
     Writes results to file in checkpoint directory.
@@ -198,26 +209,21 @@ def test(cfg: DictConfig, model: nn.Module, split: str):
     Args:
         cfg: Hydra config object
         model: torch.nn.Module
+        dataset: datasets.cell.tabula_muris.TMSetDataset | datasets.prot.swissprot.SPSetDataset
         split: str, one of ["val", "test"]
 
     Returns:
         acc_mean: float
+        acc_ci: float
         acc_std: float
     """
     logger = get_logger(__name__, cfg)
 
-    # Instantiate test dataset
-    logger.info(
-        f"Initialise {split} {cfg.dataset.name} dataset with {cfg.eval.n_episodes} episodes"
-    )
-    test_dataset = instantiate(
-        cfg.dataset.set_cls, n_episodes=cfg.eval.n_episodes, mode=split
-    )
-
     # Get the test loader
-    test_loader = test_dataset.get_data_loader(
+    test_loader = dataset.get_data_loader(
         num_workers=cfg.dataset.loader.num_workers,
         pin_memory=cfg.dataset.loader.pin_memory,
+        episodes=cfg.eval.n_episodes,
     )
 
     if next(iter(test_loader))[0].shape[0] < cfg.n_way:

@@ -322,7 +322,7 @@ class SPSetDataset(SPDataset):
         return PROTDIM
 
     def get_data_loader(
-        self, num_workers: int = 4, pin_memory: bool = True
+        self, num_workers: int = 4, pin_memory: bool = True, episodes: int | None = None
     ) -> DataLoader:
         """
         Returns an episodic data loader that can be used to iterate over the dataset in episodes.
@@ -330,11 +330,14 @@ class SPSetDataset(SPDataset):
         Args:
             num_workers (int): number of workers to load the data in parallel
             pin_memory (bool): whether to pin the data to GPU memory
+            episodes (int): number of episodes per epoch (self.n_episodes if None)
 
         Returns:
             data_loader (DataLoader): PyTorch DataLoader object
         """
-        sampler = EpisodicBatchSampler(len(self), self.n_way, self.n_episodes)
+        sampler = EpisodicBatchSampler(
+            len(self), self.n_way, self.n_episodes if episodes is None else episodes
+        )
         data_loader_params = dict(
             batch_sampler=sampler,
             num_workers=num_workers,
