@@ -278,6 +278,11 @@ class TMSetDataset(TMDataset):
 
         # Get the unique cell labels
         self.unique_targets = np.unique(self.targets_all)
+        if len(self.unique_targets) < self.n_way:
+            raise ValueError(
+                f"Number of classes with at least {self.min_samples} samples ({len(self.unique_targets)})\n"
+                f"is less than n_way ({self.n_way})"
+            )
 
         # Initialise empty list of data loader for each class
         self.sub_dataloader = []

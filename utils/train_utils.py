@@ -65,6 +65,12 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
         f"Initializing val {cfg.dataset.set_cls._target_}. (Using {(100 * cfg.dataset.subset):.0f}%)"
     )
     val_dataset = instantiate(cfg.dataset.set_cls, mode="val", n_episodes=100)
+    # Instantiate test dataset (few-shot) to test if we have enough classes in it
+    # with at least (n_support + n_query) examples to form n_way
+    logger.info(
+        f"Initializing test {cfg.dataset.set_cls._target_}. (Using {(100 * cfg.dataset.subset):.0f}%)"
+    )
+    test_dataset = instantiate(cfg.dataset.set_cls, n_episodes=100, mode="test")
 
     # Initialise SOT (if specified)
     sot = None
@@ -213,6 +219,14 @@ def test(cfg: DictConfig, model: nn.Module, split: str):
         num_workers=cfg.dataset.loader.num_workers,
         pin_memory=cfg.dataset.loader.pin_memory,
     )
+
+    if next(iter(test_loader))[0].shape[0] < cfg.n_way:
+        message = (
+            f"there are not enough classes in {split} split\n"
+            f"to form {cfg.n_way} way test (max {next(iter(test_loader))[0].shape[0]} way test)\n"
+            f"try reducing n_support ({cfg.n_shot}) or n_query ({cfg.exp.n_query})"
+        )
+        raise ValueError(message)
 
     # Test loop
     model.eval()

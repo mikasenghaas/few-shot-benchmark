@@ -257,6 +257,11 @@ class SPSetDataset(SPDataset):
         )
         self.num_samples = len(samples)
         self.annotations = get_ids(samples)
+        if len(self.annotations) < self.n_way:
+            raise ValueError(
+                f"Number of classes with at least {self.min_samples} samples ({len(self.annotations)})\n"
+                f"is less than n_way ({self.n_way})"
+            )
 
         # Set the number of episodes
         if n_episodes:
