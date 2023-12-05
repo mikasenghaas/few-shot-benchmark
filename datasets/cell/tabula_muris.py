@@ -276,7 +276,6 @@ class TMSetDataset(TMDataset):
             self.n_episodes = n_episodes
         else:
             self.set_n_episodes()
-        print(self.num_samples, self.n_way, self.n_support, self.n_episodes)
 
         # Get the unique cell labels
         self.unique_targets = np.unique(self.targets_all)
