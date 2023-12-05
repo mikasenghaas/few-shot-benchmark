@@ -190,7 +190,7 @@ class TMSimpleDataset(TMDataset):
 
     # TODO: A cleaner API would probably be to also get batch_size as function argument, instead of in the constructor
     def get_data_loader(
-        self, shuffle: bool = True, num_workers: int = 4, pin_memory: bool = True
+        self, shuffle: bool = True, num_workers: int = 4, pin_memory: bool = True, **kwargs
     ) -> DataLoader:
         """
         Returns a PyTorch DataLoader object that can be used to iterate over the dataset in batches

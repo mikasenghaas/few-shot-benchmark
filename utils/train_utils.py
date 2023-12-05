@@ -219,6 +219,14 @@ def test(
     """
     logger = get_logger(__name__, cfg)
 
+    # instantiate train dataset again, but this time as set_dataset if method is baseline
+    if cfg.method.type == "baseline":
+        dataset = instantiate(
+            cfg.dataset.set_cls,
+            mode=split,
+            n_episodes=cfg.eval.n_episodes,
+        )
+
     # Get the test loader
     test_loader = dataset.get_data_loader(
         num_workers=cfg.dataset.loader.num_workers,

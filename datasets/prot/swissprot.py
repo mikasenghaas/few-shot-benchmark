@@ -177,7 +177,7 @@ class SPSimpleDataset(SPDataset):
         return self.samples[0].input_seq.shape[0]
 
     def get_data_loader(
-        self, shuffle: bool = True, num_workers: int = 4, pin_memory: bool = True
+        self, shuffle: bool = True, num_workers: int = 4, pin_memory: bool = True, **kwargs
     ) -> DataLoader:
         """
         Returns a PyTorch DataLoader object for the dataset.

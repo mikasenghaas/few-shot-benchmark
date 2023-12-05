@@ -40,7 +40,6 @@ class FCNet(nn.Module):
         self.final_feat_dim = layer_dim[-1]
 
     def forward(self, x):
-        N, D = x.shape
         x = self.encoder(x)
         x = x.view(x.size(0), -1)
 
