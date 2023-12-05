@@ -95,7 +95,9 @@ class TMDataset(FewShotDataset, ABC):
 
         # Load the processed data and encodings
         self.data = pickle.load(open(processed_data_path, "rb"))
-        # mapping = pickle.load(open(mapping_path, "rb"))
+        self.trg2idx = pickle.load(open(mapping_path, "rb"))
+        self.idx2trg = {idx: trg for trg, idx in self.trg2idx.items()}
+        self.mode = mode
 
         # Filter out samples from the specified tissues
         tissues = mode2tissues[mode]
@@ -274,7 +276,6 @@ class TMSetDataset(TMDataset):
             self.n_episodes = n_episodes
         else:
             self.set_n_episodes()
-        print(self.num_samples, self.n_way, self.n_support, self.n_episodes)
 
         # Get the unique cell labels
         self.unique_targets = np.unique(self.targets_all)

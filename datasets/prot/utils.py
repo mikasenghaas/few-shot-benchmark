@@ -231,7 +231,8 @@ def get_embedding(emb_path, entry):
 def encodings(root, level=5):
     """Returns dictionary of label encodings of annotations"""
     adict = get_ancestor_dict(os.path.join(root, "sprot_ancestors.txt"))
-    all_annots = get_level(set(adict.keys()), level)
+    all_annots = set(adict.keys())
+    # all_annots = get_level(set(adict.keys()), level)
 
     for key, value in adict.items():
         all_annots |= value
