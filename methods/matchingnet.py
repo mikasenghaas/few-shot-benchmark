@@ -128,7 +128,7 @@ class MatchingNet(MetaTemplate):
         return logprobs
 
     def set_forward(
-        self, x: Union[List[torch.Tensor], torch.Tensor], is_feature: bool = False
+        self, x: Union[List[torch.Tensor], torch.Tensor], is_feature: bool = False, return_emb : bool = False
     ):
         """
         Args:
@@ -165,7 +165,10 @@ class MatchingNet(MetaTemplate):
             z_query, G, G_normalized, Y_S
         )  # shape = (n_way * n_query, n_way)
 
-        return logprobs
+        if return_emb:
+            return logprobs, (z_support, z_query)
+        else:
+            return logprobs
 
     def set_forward_loss(
         self, x: Union[torch.Tensor, List[torch.Tensor]]
