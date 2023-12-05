@@ -168,6 +168,12 @@ def train(
     # Training loop
     best_model = None
     max_acc = -1
+    patience = cfg.train.patience  # the number of epochs to wait before early stop
+    if patience % cfg.general.val_freq != 0:
+        raise ValueError(
+            f"Patience ({patience}) must be divisible by validation frequency ({cfg.general.val_freq})"
+        )
+    epochs_since_improvement = 0
     logger.info("Start training")
     for epoch in range(cfg.train.max_epochs):
         wandb.log({"epoch": epoch + 1})
@@ -187,6 +193,14 @@ def train(
                 best_model = model
                 outfile = os.path.join(cfg.paths.log_dir, "best_model.pt")
                 torch.save(model.state_dict(), outfile)
+                epochs_since_improvement = 0
+            else:
+                epochs_since_improvement += cfg.general.val_freq
+
+            if epochs_since_improvement >= patience:
+                logger.info(f"Early stopping triggered in epoch {epoch + 1} because"
+                            f"val/acc hasn't improved for {epochs_since_improvement} epochs.")
+                break
 
     # Log best model to W&B
     model_artifact.add_dir(cfg.paths.log_dir)
