@@ -95,7 +95,9 @@ class TMDataset(FewShotDataset, ABC):
 
         # Load the processed data and encodings
         self.data = pickle.load(open(processed_data_path, "rb"))
-        # mapping = pickle.load(open(mapping_path, "rb"))
+        self.trg2idx = pickle.load(open(mapping_path, "rb"))
+        self.idx2trg = {idx: trg for trg, idx in self.trg2idx.items()}
+        self.mode = mode
 
         # Filter out samples from the specified tissues
         tissues = mode2tissues[mode]
