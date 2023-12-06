@@ -1,6 +1,5 @@
 # This code is modified from https://github.com/facebookresearch/low-shot-shrink-hallucinate
 
-import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -8,7 +7,7 @@ from torch.autograd import Variable
 from methods.meta_template import MetaTemplate
 from utils.data_utils import one_hot
 
-from typing import Tuple, Union, List
+from typing import Union, List
 
 
 class MatchingNet(MetaTemplate):
@@ -147,8 +146,21 @@ class MatchingNet(MetaTemplate):
         z_support = z_support.contiguous().view(self.n_way * self.n_support, -1)
         z_query = z_query.contiguous().view(self.n_way * self.n_query, -1)
 
-        # Encode the support set
-        G, G_normalized = self.encode_training_set(z_support)
+        """
+        n = z_support.size(0)
+        m = z_query.size(0)
+        d = z_support.size(1)
+        assert d == z_query.size(1)
+
+        x = z_support.unsqueeze(1).expand(n, m, d)
+        y = z_query.unsqueeze(0).expand(n, m, d)
+
+        d = -torch.pow(x - y, 2).sum(2).T
+        ds = self.softmax(d)
+        logscores = (ds @ Y_S + 1e-6).log()
+
+        return logscores
+        """
 
         # Get the labels of the support set
         y_s = self.get_episode_labels(
@@ -159,6 +171,9 @@ class MatchingNet(MetaTemplate):
         Y_S = Variable(one_hot(y_s, self.n_way)).to(
             self.device
         )  # shape = (n_way * n_support, n_way)
+
+        # Encode the support set
+        G, G_normalized = self.encode_training_set(z_support)
 
         # Get the log probabilities for each class
         logprobs = self.get_logprobs(
@@ -218,31 +233,42 @@ class FullyContextualEmbedding(nn.Module):
         # Define the device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def forward(self, f: torch.Tensor, G: torch.Tensor) -> torch.Tensor:
+    def forward(self, queries: torch.Tensor, support: torch.Tensor) -> torch.Tensor:
         """
         Compute the fully contextual embedding for the query set.
 
         Args:
-            f (torch.Tensor): query set of shape (n_way * n_query, feat_dim)
-            G (torch.Tensor): encoded support set of shape (n_way * n_support, feat_dim)
+            queries (torch.Tensor): query set of shape (n_way * n_query, feat_dim)
+            support (torch.Tensor): encoded support set of shape (n_way * n_support, feat_dim)
 
         Returns:
             torch.Tensor: fully contextual embedding of shape (n_way * n_query, feat_dim)
         """
-        h = f
-        c = self.c_0.expand_as(f)
-        G_T = G.transpose(0, 1)
-        K = G.size(0)  # Tuna to be comfirmed
-        for k in range(K):
-            logit_a = h.mm(G_T)
-            a = self.softmax(logit_a)
-            r = a.mm(G)
-            x = torch.cat((f, r), 1)
 
-            h, c = self.lstmcell(x, (h, c))
-            h = h + f
+        # Create the initial cell state (zero matrix with shape (n_way * n_query, feat_dim))
+        initial_state = self.c_0.expand_as(queries)  # c = self.c_0.expand_as(f)
+        hidden_state = queries
 
-        return h
+        logits = (
+            queries @ support.T
+        )  # logit_a = h.mm(G_T) (cosine similarity between query and support), (n_way * n_query, n_way * n_support)
+        scores = self.softmax(logits)  # a = self.softmax(logit_a)
+        queries_reweighted = (
+            scores @ support
+        )  # r = a.mm(G) (weighted sum of the support set embeddings), (n_way * n_query, feat_dim)
+
+        # Stack the original query embeddings with the reweighted ones
+        x = torch.cat((queries, queries_reweighted), 1)
+
+        for _ in range(
+            support.size(0)
+        ):  # re-embed n_way * n_support times (seems to be a heuristic), performance generally increases with more iterations
+            hidden_state, initial_state = self.lstmcell(
+                x, (hidden_state, initial_state)
+            )
+            hidden_state = hidden_state + queries
+
+        return hidden_state
 
     def cuda(self):
         super(FullyContextualEmbedding, self).to(self.device)
