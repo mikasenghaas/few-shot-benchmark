@@ -5,7 +5,6 @@ import torch.nn as nn
 
 from backbones.blocks import Linear_fw
 from methods.meta_template import MetaTemplate
-import torch.nn.functional as F
 
 
 class MAML(MetaTemplate):

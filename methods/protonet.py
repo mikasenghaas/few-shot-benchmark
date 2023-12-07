@@ -1,13 +1,11 @@
 # This code is modified from https://github.com/jakesnell/prototypical-networks
 
-import numpy as np
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 
 from methods.meta_template import MetaTemplate
 
-from typing import List, Tuple, Union
+from typing import List, Union
 
 
 class ProtoNet(MetaTemplate):
@@ -17,7 +15,7 @@ class ProtoNet(MetaTemplate):
         n_way: int,
         n_support: int,
         similarity: str = "euclidean",
-        **kwargs
+        **kwargs,
     ):
         """Protonet Meta Learner - compute the prototypes based on the support set and then
         return the chosen similarity measure between the prototypes and the query set.

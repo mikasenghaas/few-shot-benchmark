@@ -1,4 +1,3 @@
-import sys
 import numpy as np
 
 import os
@@ -70,7 +69,7 @@ def get_term_frequency(root, reader):
         entry = i.id.split("|")[1]
         try:
             annots = reader[entry]
-        except:
+        except Exception as _:
             continue
 
         if len(annots) == 0:

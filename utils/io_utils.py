@@ -284,7 +284,9 @@ def print_cfg(cfg: OmegaConf):
     table.add_row(exp_params.values())
     print(table)
 
-    print(f"\n📣 For full configuration, see {cfg.paths.log_dir}/.hydra/config.yaml\n\n")
+    print(
+        f"\n📣 For full configuration, see {cfg.paths.log_dir}/.hydra/config.yaml\n\n"
+    )
 
 
 def get_logger(name: str, cfg: OmegaConf) -> logging.Logger:

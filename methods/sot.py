@@ -14,7 +14,7 @@ class SOT(object):
         sigmoid: bool = False,
         mask_diag: bool = True,
         max_scale: bool = True,
-        **kwargs
+        **kwargs,
     ):
         """
         Self-Optimal Transport (SOT) features.

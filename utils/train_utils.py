@@ -11,7 +11,6 @@ Includes:
 import os
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
 import wandb
 from hydra.utils import instantiate
 from omegaconf import OmegaConf, DictConfig
@@ -198,8 +197,10 @@ def train(
                 epochs_since_improvement += cfg.general.val_freq
 
             if epochs_since_improvement >= patience:
-                logger.info(f"Early stopping triggered in epoch {epoch + 1} because"
-                            f"val/acc hasn't improved for {epochs_since_improvement} epochs.")
+                logger.info(
+                    f"Early stopping triggered in epoch {epoch + 1} because"
+                    f"val/acc hasn't improved for {epochs_since_improvement} epochs."
+                )
                 break
 
     # Log best model to W&B
@@ -231,8 +232,6 @@ def test(
         acc_ci: float
         acc_std: float
     """
-    logger = get_logger(__name__, cfg)
-
     # instantiate train dataset again, but this time as set_dataset if method is baseline
     if cfg.method.type == "baseline":
         dataset = instantiate(

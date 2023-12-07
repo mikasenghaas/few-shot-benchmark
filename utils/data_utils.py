@@ -17,7 +17,7 @@ def one_hot(y, num_class):
 
 class SimpleHDF5Dataset:
     def __init__(self, file_handle=None):
-        if file_handle == None:
+        if file_handle is None:
             self.f = ""
             self.all_feats_dset = []
             self.all_labels = []

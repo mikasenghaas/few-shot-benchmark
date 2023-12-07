@@ -225,7 +225,7 @@ def compute_metrics(
         kwargs = kwargs if kwargs is not None else {}
 
         # Get the metric name
-        metric_name = " ".join(metric_fn.__name__.capitalize().split("_"))
+        # metric_name = " ".join(metric_fn.__name__.capitalize().split("_"))
 
         # Eval the episodes using the metric fn
         episodes_evals = [

@@ -13,7 +13,7 @@ class FCNet(nn.Module):
         layer_dim: list = [64, 64],
         dropout: float = 0.2,
         fast_weight: bool = False,
-        **kwargs
+        **kwargs,
     ):
         """
         Fully connected network for feature extraction. The network is composed of a series of fully connected layers.
@@ -70,7 +70,7 @@ class EnFCNet(nn.Module):
         self.masks = torch.zeros(self.num_GOs + 1, batch, num_genes)
         for i, genes in enumerate(self.go_mask):
             self.masks[i, :, genes] = 1
-        selected_genes = torch.sum(self.masks[:, 0, :], axis=0)
+        # selected_genes = torch.sum(self.masks[:, 0, :], axis=0) # Not used
         self.masks[-1, :, :] = 1
 
     def forward(self, x):

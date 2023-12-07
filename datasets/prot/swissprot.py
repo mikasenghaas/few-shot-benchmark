@@ -11,7 +11,6 @@ import torch
 from datasets.dataset import FewShotDataset, EpisodicBatchSampler
 from datasets.prot.utils import (
     get_samples_using_ic,
-    get_samples,
     check_min_samples,
     get_mode_ids,
     get_ids,

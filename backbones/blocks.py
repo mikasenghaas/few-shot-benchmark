@@ -7,14 +7,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.weight_norm import WeightNorm
 
-from torch_geometric.utils import (
-    remove_self_loops,
-    add_self_loops,
-    softmax,
-    add_remaining_self_loops,
-)
-from torch_geometric.nn.conv import MessagePassing
-
 
 # Basic ResNet model
 
@@ -162,7 +154,7 @@ class Conv1d_fw(nn.Conv1d):
             bias=bias,
         )
         self.weight.fast = None
-        if not self.bias is None:
+        if self.bias is not None:
             self.bias.fast = None
 
     def forward(self, x):
@@ -214,7 +206,7 @@ class Conv2d_fw(nn.Conv2d):
             bias=bias,
         )
         self.weight.fast = None
-        if not self.bias is None:
+        if self.bias is not None:
             self.bias.fast = None
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
