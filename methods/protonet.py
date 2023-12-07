@@ -36,6 +36,8 @@ class ProtoNet(MetaTemplate):
         self.loss_fn = nn.CrossEntropyLoss()
         self.similarity_type = similarity
 
+        self.encoder = nn.LSTM(self.feat_dim, self.feat_dim, 1, bidirectional=True)
+
         # Define device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -85,6 +87,11 @@ class ProtoNet(MetaTemplate):
 
         # Make sure the tensors are contiguous in the memory
         z_support = z_support.contiguous()
+
+        # Re-embed the support set
+        z_support = z_support.view(self.n_way * self.n_support, -1)
+        out, _ = self.encoder(z_support)
+        z_support = z_support + out[:, : self.feat_dim] + out[:, self.feat_dim :]
 
         # Get the prototypes for each class by averaging the support embeddings
         z_proto = z_support.view(self.n_way, self.n_support, -1).mean(1)
