@@ -1,15 +1,15 @@
 #!/bin/bash
 
 : '
-Run group of experiments locally.
+Run all experiments for fixedd n-way and n-shot.
 '
 
 # Experiment Parameters (with hyperparameter grid for method and dataset)
-group=local
+group=benchmark
 n_way=5
 n_shot=5
 sot=( false true ) 
-methods=( "baseline" "baseline_pp" "matchingnet" "protonet" "maml" )
+methods=( "matchingnet" "protonet" "maml" "baseline" "baseline_pp" )
 datasets=( "swissprot" "tabula_muris" )
 
 for dataset in "${datasets[@]}"
