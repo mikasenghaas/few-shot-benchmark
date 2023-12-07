@@ -7,9 +7,4 @@ method:
   type: baseline
 
 train:
-  batch_size: 16 # Batch size
-
-hydra:
-  sweeper:
-    params:
-      train.batch_size: 16,32,64
+  batch_size: 50 # Batch size
