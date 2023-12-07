@@ -6,9 +6,9 @@ defaults:
 method:
   name: maml
   n_task: 4
-  task_update_num: 1
+  task_update_num: 2
   fast_weight: True # MAML reqires special gradient updates in backbone
-  maml_inner_lr: 0.01
+  maml_inner_lr: 0.05
 
   cls:
     _target_: methods.maml.MAML
@@ -19,4 +19,5 @@ method:
 hydra:
   sweeper:
     params:
-      method.maml_inner_lr: 0. 001,0.01
+      method.task_update_num: 1,5,10
+      method.maml_inner_lr: 0.1,0.01

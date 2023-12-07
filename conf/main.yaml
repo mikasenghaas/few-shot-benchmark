@@ -27,8 +27,8 @@ wandb:
 
 # Training configuration
 train:
-  max_epochs: 10
-  patience: 1 # Number of epochs to wait before early stopping, has to be multiple of val_freq
+  max_epochs: 40
+  patience: 5 # Number of epochs to wait before early stopping, has to be multiple of val_freq
   lr: 0.001
 
 eval:
@@ -48,7 +48,7 @@ hydra:
     subdir: ${hydra.job.num}
   sweeper:
     params:
-      train.lr: 0.001,0.1
+      train.lr: 0.0005,0.001
 
 sot:
   cls:
