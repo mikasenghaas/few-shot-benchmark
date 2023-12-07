@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-from tqdm import tqdm
-
 from backbones.blocks import distLinear
 from methods.meta_template import MetaTemplate
 
@@ -51,17 +49,14 @@ class Baseline(MetaTemplate):
 
         # Define the classifier used only the training phase!
         if loss == "softmax":
-            self.classifier = nn.Linear(self.feature.final_feat_dim, n_classes)
+            self.classifier = nn.Linear(self.feat_dim, n_classes)
             self.classifier.bias.data.fill_(0)
         elif loss == "dist":  # Baseline ++
-            self.classifier = distLinear(self.feature.final_feat_dim, n_classes)
+            self.classifier = distLinear(self.feat_dim, n_classes)
         self.loss_type = loss  # 'softmax' #'dist'
 
-        # Define the loss function based on the task
-        if self.type == "classification":
-            self.loss_fn = nn.CrossEntropyLoss()
-        elif self.type == "regression":
-            self.loss_fn = nn.MSELoss()
+        # Define the loss function
+        self.loss_fn = nn.CrossEntropyLoss()
 
         # Define the device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -88,11 +83,10 @@ class Baseline(MetaTemplate):
         # Extract the features
         out = self.feature.forward(x)
 
-        # Using chosen classifer, map the embeddings vector for each to the number of classes
-        if self.classifier != None:
-            scores = self.classifier.forward(out)
-        else:
-            raise ValueError("Classifier not defined, Regression not supported.")
+        if self.SOT:
+            out = self.SOT(out)
+
+        scores = self.classifier.forward(out)
 
         return scores
 
@@ -112,10 +106,7 @@ class Baseline(MetaTemplate):
         scores = self.forward(x)
 
         # Get the labels and cast it to correct type
-        if self.type == "classification":
-            y = y.long().to(self.device)
-        else:
-            y = y.to(self.device)
+        y = y.long().to(self.device)
 
         # Compute the loss and return
         return self.loss_fn(scores, y)
@@ -197,13 +188,8 @@ class Baseline(MetaTemplate):
             .to(self.device)
         )
 
-        # Classification
-        if y is None:
-            y_support = self.get_episode_labels(self.n_support, enable_grad=True)
-
-        # Regression
-        else:
-            raise ValueError("Finetuning baseline on regression not supported.")
+        # Get episode labels
+        y_support = self.get_episode_labels(self.n_support, enable_grad=True)
 
         # Define classifier
         if self.loss_type == "softmax":
