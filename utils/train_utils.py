@@ -165,7 +165,6 @@ def train(
     model_artifact = wandb.Artifact(name=run.id, type="model")
 
     # Training loop
-    best_model = None
     max_acc = -1
     patience = cfg.train.patience  # the number of epochs to wait before early stop
     if patience % cfg.general.val_freq != 0:
@@ -189,7 +188,6 @@ def train(
             if acc > max_acc:
                 logger.info(f"New best model! (Acc. {acc:.3f} > {max_acc:.3f})")
                 max_acc = acc
-                best_model = model
                 outfile = os.path.join(cfg.paths.log_dir, "best_model.pt")
                 torch.save(model.state_dict(), outfile)
                 epochs_since_improvement = 0
@@ -198,7 +196,7 @@ def train(
 
             if epochs_since_improvement >= patience:
                 logger.info(
-                    f"Early stopping triggered in epoch {epoch + 1} because"
+                    f"Early stopping triggered in epoch {epoch + 1} because "
                     f"val/acc hasn't improved for {epochs_since_improvement} epochs."
                 )
                 break
@@ -207,7 +205,10 @@ def train(
     model_artifact.add_dir(cfg.paths.log_dir)
     wandb.log_artifact(model_artifact)
 
-    return best_model
+    # Load best model
+    model.load_state_dict(torch.load(outfile))
+
+    return model
 
 
 def test(
