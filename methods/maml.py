@@ -1,13 +1,11 @@
 # This code is modified from https://github.com/dragen1860/MAML-Pytorch and https://github.com/katerakelly/pytorch-maml
-from typing import List, Union, Tuple
-import numpy as np
+from typing import List, Union
 import torch
 import torch.nn as nn
-import wandb
-from torch.autograd import Variable
 
 from backbones.blocks import Linear_fw
 from methods.meta_template import MetaTemplate
+import torch.nn.functional as F
 
 
 class MAML(MetaTemplate):
@@ -61,37 +59,6 @@ class MAML(MetaTemplate):
         # Define the device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def parse_feature(
-        self, x: Union[List[torch.Tensor], torch.Tensor]
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """
-        Split the input into support and query sets and flatten.
-
-        Args:
-            x (Union[List[torch.Tensor], torch.Tensor]) : input of shape (n_way, n_support + n_query, feat_dim)
-
-        Returns:
-            x_support (torch.Tensor) : support set of shape (n_way * n_support, feat_dim)
-            x_query (torch.Tensor) : query set of shape (n_way * n_query, feat_dim)
-            y_support (torch.Tensor) : support set labels of shape (n_way * n_support,)
-        """
-        # Run backbone and possibly SOT
-        # (shape: (n_way, n_support, feat_dim)), ...
-        x_support, x_query = super().parse_feature(x, is_feature=False)
-
-        # Flatten
-        x_support = x_support.contiguous().view(self.n_way * self.n_support, -1)
-        x_query = x_query.contiguous().view(self.n_way * self.n_query, -1)
-
-        # Enable gradients
-        x_support = x_support.requires_grad_()
-        x_query = x_query.requires_grad_()
-
-        # Get the labels of the support set
-        y_support = self.get_episode_labels(self.n_support, enable_grad=True)
-
-        return x_support, x_query, y_support
-
     def forward(self, x: Union[List[torch.Tensor], torch.Tensor]) -> torch.Tensor:
         """
         Run backbone and classifier on input data.
@@ -133,10 +100,17 @@ class MAML(MetaTemplate):
         # Reset the gradients
         self.zero_grad()
 
+        # Get the labels of the support set
+        y_support = self.get_episode_labels(self.n_support, enable_grad=True)
+
         # Try to adapt the model to the given support set
         for _ in range(self.task_update_num):
             # Parse the input data: backbone + (SOT) + flatten
-            x_support, x_query, y_support = self.parse_feature(x)
+            x_support, x_query = self.parse_feature(x, is_feature=False)
+
+            # Flatten
+            x_support = x_support.contiguous().view(self.n_way * self.n_support, -1)
+            x_query = x_query.contiguous().view(self.n_way * self.n_query, -1)
 
             # Compute the predictions and loss for the support set
             scores = self.forward(x_support)
@@ -210,7 +184,7 @@ class MAML(MetaTemplate):
         """
 
         # Setup tracking variables
-        avg_loss = 0
+        loss = 0
         task_count = 0
         loss_all = []
 
@@ -221,7 +195,7 @@ class MAML(MetaTemplate):
         pbar.set_description(
             f"Training: Epoch {epoch:03d} | Episodes 000/{num_episodes:03d} | 0.0000"
         )
-        for i, (x, _) in enumerate(train_loader):
+        for i, (x, _) in pbar:
             # Reset the gradients
             optimizer.zero_grad()
 
@@ -235,11 +209,11 @@ class MAML(MetaTemplate):
             ), f"MAML do not support way change, n_way is {self.n_way} but x.size(0) is {x.size(0)}"
 
             # Compute the loss on the query set after adaptation on the support set
-            loss = self.set_forward_loss(x)
+            episode_loss = self.set_forward_loss(x)
 
             # Update the tracking variables
-            avg_loss = avg_loss + loss.item()
-            loss_all.append(loss)
+            loss += episode_loss.item()
+            loss_all.append(episode_loss)
             task_count += 1
 
             # Perform the MAML params update after n_task tasks
@@ -254,9 +228,9 @@ class MAML(MetaTemplate):
                 loss_all = []
 
             # Log the loss
-            self.log_training_progress(pbar, epoch, i, num_episodes, avg_loss)
+            self.log_training_progress(pbar, epoch, i, num_episodes, loss)
 
-        epoch_loss = avg_loss / num_episodes
+        epoch_loss = loss / num_episodes
 
         return epoch_loss
 
