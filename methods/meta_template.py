@@ -472,7 +472,7 @@ class MetaTemplate(nn.Module, ABC):
         """
 
         # Split the input into support and query sets (is_feature = True --> do not run backbone)
-        assert is_feature == True, "Feature is fixed in further adaptation"
+        assert is_feature, "Feature is fixed in further adaptation"
         z_support, z_query = self.parse_feature(x, is_feature)
 
         # Flatten the second dimension of the query and support sets
