@@ -32,7 +32,7 @@ def extract_config(run: Run) -> dict:
     run_id = run.id
     dataset = config["dataset"]["name"]
     method = config["method"]["name"]
-    sot = config["sot"]
+    use_sot = config["use_sot"]
     n_way = config["n_way"]
     n_shot = config["n_shot"]
 
@@ -40,7 +40,7 @@ def extract_config(run: Run) -> dict:
         "run_id": run_id,
         "dataset": dataset,
         "method": method,
-        "sot": sot,
+        "use_sot": use_sot,
         "n_way": n_way,
         "n_shot": n_shot,
     }
@@ -76,12 +76,46 @@ def load_to_df(runs: list[Run]) -> pd.DataFrame:
     df = pd.DataFrame(configs).join(pd.DataFrame(metrics)).set_index("run_id")
 
     # Creating Multi-Column Index
-    column_tuples = [("config", col) for col in df.columns[: len(configs[0])]] + [
-        ("eval", col) for col in df.columns[len(configs[0]) :]
-    ]
+    config_columns = [("config", col) for col in configs[0].keys() if col != "run_id"]
+    eval_columns = [("eval", col) for col in metrics[0].keys()]
+    column_tuples = config_columns + eval_columns
     df.columns = pd.MultiIndex.from_tuples(column_tuples)
 
     return df
+
+
+def get_best_run(df: pd.DataFrame, metric: str) -> pd.DataFrame:
+    """
+    Filters the given DataFrame for the best run according to the given metric
+    for each unique experiment configuration (in the column keys (config, *)).
+
+    Args:
+        df (pd.DataFrame): DataFrame containing all runs
+        metric (str): Metric to use for filtering
+
+    Returns:
+        df (pd.DataFrame): DataFrame containing the best run for each experiment
+        configuration
+    """
+    # Get all columns containing the experiment configuration
+    experiment_config = list(filter(lambda x: x[0] == "config", df.columns))
+
+    # Get all unique experiment configurations
+    unique_experiments = df[experiment_config].drop_duplicates()
+
+    # Get best runs for each experiment configuration
+    best_runs = []
+    for _, experiment in unique_experiments.iterrows():
+        # Get all runs with the same experiment configuration
+        experiment_runs = df[
+            (df[experiment_config] == experiment[experiment_config]).all(axis=1)
+        ]
+
+        # Get run with best validation accuracy
+        best_run = experiment_runs.sort_values(metric, ascending=False).iloc[0]
+        best_runs.append(best_run)
+
+    return pd.DataFrame(best_runs)
 
 
 def download_artifact(
