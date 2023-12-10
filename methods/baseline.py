@@ -61,34 +61,37 @@ class Baseline(MetaTemplate):
         # Define the device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, x: torch.Tensor, return_intermediates: bool = False
+    ) -> torch.Tensor:
         """
         [Pretraining] Forward the data through the backbone.
 
         Args:
             x (torch.Tensor / [torch.Tensor]): the input data
+            return_intermediates (bool): whether to return the intermediate features
 
         Returns:
-            out (torch.Tensor): the output of the backbone
+            out (dict): the output of the model
         """
 
-        # TODO: why list?
-        if isinstance(x, list):
-            x = [Variable(obj.to(self.device)) for obj in x]
-
-        # Turn the input data into a Variable so we can compute the gradient
-        else:
-            x = Variable(x.to(self.device))
+        # Initialise outputs dict
+        outputs = {}
 
         # Extract the features
-        out = self.feature.forward(x)
+        x = self.forward_backbone(x)
+        if return_intermediates:
+            outputs["backbone"] = x
 
-        if self.SOT:
-            out = self.SOT(out)
+        if self.sot:
+            x = self.sot(x)
+            if return_intermediates:
+                outputs["sot"] = x
 
-        scores = self.classifier.forward(out)
+        scores = self.classifier.forward(x)
+        outputs["scores"] = scores
 
-        return scores
+        return outputs
 
     def set_forward_loss(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
@@ -103,7 +106,8 @@ class Baseline(MetaTemplate):
         """
 
         # Compute the prediction
-        scores = self.forward(x)
+        outputs = self.forward(x)
+        scores = outputs["scores"]
 
         # Get the labels and cast it to correct type
         y = y.long().to(self.device)
@@ -158,31 +162,58 @@ class Baseline(MetaTemplate):
 
         return epoch_loss
 
-    def set_forward(self, x: torch.Tensor, y: torch.Tensor = None) -> torch.Tensor:
+    def set_forward(
+        self,
+        x: torch.Tensor,
+        return_intermediates: bool = False,
+    ) -> torch.Tensor:
         """
         [Finetuning] Fine-tune the model for the given episode's data
         and then evaluate the model on the query set.
 
         Args:
             x (torch.Tensor / [torch.Tensor]): the input data
-            y (torch.Tensor): the ground truth
+            return_intermediates (bool): whether to return the intermediate features
 
         Returns:
             scores (torch.Tensor): the predictions on the query set
         """
 
-        # Run backbone, split data into support and query sets
-        z_support, z_query = self.parse_feature(x, is_feature=False)
+        # Set the number of query samples dynamically
+        self.set_nway(x)
+        self.set_nquery(x)
+
+        # Initialise outputs dict
+        outputs = {}
+
+        # Reshape input to 2d tensor of shape (n_way * (n_support + n_query), feat_dim)
+        x = self.reshape2feature(x)
+        if return_intermediates:
+            outputs["input"] = self.reshape2set(x)
+
+        # Run backbone
+        x = self.forward_backbone(x)
+        if return_intermediates:
+            outputs["backbone"] = self.reshape2set(x)
+
+        # Run SOT if specified
+        if self.sot:
+            x = self.forward_sot(x)
+            if return_intermediates:
+                outputs["sot"] = self.reshape2set(x)
+
+        # Split support and query
+        x_support, x_query = self.parse_feature(self.reshape2set(x))
 
         # Freeze the backbone
-        z_support = (
-            z_support.contiguous()
+        x_support = (
+            x_support.contiguous()
             .view(self.n_way * self.n_support, -1)
             .detach()
             .to(self.device)
         )
-        z_query = (
-            z_query.contiguous()
+        x_query = (
+            x_query.contiguous()
             .view(self.n_way * self.n_query, -1)
             .detach()
             .to(self.device)
@@ -216,10 +247,12 @@ class Baseline(MetaTemplate):
         scores = self.adapt(
             linear_clf,
             set_optimizer,
-            (z_support, y_support),
-            z_query,
+            (x_support, y_support),
+            x_query,
             loss_function,
             batch_size=4,
         )
 
-        return scores
+        outputs["scores"] = scores
+
+        return outputs

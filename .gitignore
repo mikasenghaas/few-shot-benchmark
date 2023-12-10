@@ -4,6 +4,7 @@
 /outputs
 /artifacts
 *.obo
+mika.*
 
 
 # Byte-compiled / optimized / DLL files

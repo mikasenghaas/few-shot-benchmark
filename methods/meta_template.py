@@ -34,6 +34,7 @@ class MetaTemplate(nn.Module, ABC):
             print_freq (int): how often (in terms of # of batches) to print the results
             type (str): the type of the task (classification or regression)
             sot (SOT) : Self-Optimal Transport Feature Transformer
+            save_intermediates (bool): Whether to save intermediate results during set_forward()
         """
 
         # Init parent directory
@@ -49,7 +50,7 @@ class MetaTemplate(nn.Module, ABC):
         )
         self.change_way = change_way  # some methods allow different_way classification during training and test
         self.type = type
-        self.SOT = sot
+        self.sot = sot
 
         # Init device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -88,12 +89,54 @@ class MetaTemplate(nn.Module, ABC):
 
         return x
 
-    def parse_feature(
-        self, x: Union[torch.Tensor, List[torch.Tensor]], is_feature: bool
-    ) -> torch.Tensor:
+    def reshape2set(self, x: torch.Tensor) -> torch.Tensor:
         """
-        [Helper] Return split into support and query sets.
-        Important: if parse feature is False, we first run the input tensor through the backbone.
+        Reshape a XD tensor to a (X + 1)D tensor by splitting the first dimension into two dimensions.
+        The first dimension is split into n_way and n_support + n_query.
+
+        Args:
+            x (torch.Tensor): input tensor
+
+        Returns:
+            x (torch.Tensor): reshaped tensor
+        """
+        return x.contiguous().view(self.n_way, self.n_support + self.n_query, -1)
+
+    def forward_backbone(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass through the backbone. Requires the input tensor to be 2D (batch_size, feat_dim).
+        For set-based methods, make sure to first flatten the second dimension of the input tensor
+        using reshape2feature() which will return a tensor of shape (n_way * n_support + n_query, feat_dim).
+
+        Args:
+            x (torch.Tensor): input tensor
+
+        Returns:
+            out (torch.Tensor): output tensor
+        """
+        assert x.ndim == 2, "Input tensor must be 2D. Call reshape2feature() first."
+        return self.feature.forward(x)
+
+    def forward_sot(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass through the backbone. Requires the input tensor to be 2D (batch_size, feat_dim).
+        For set-based methods, make sure to first flatten the second dimension of the input tensor
+        using reshape2feature() which will return a tensor of shape (n_way * n_support + n_query, feat_dim).
+
+        Args:
+            x (torch.Tensor): input tensor
+
+        Returns:
+            out (torch.Tensor): output tensor
+        """
+        assert x.ndim == 2, "Input tensor must be 2D. Call reshape2feature() first."
+        assert self.sot is not None, "SOT is not enabled."
+
+        return self.sot(x)
+
+    def parse_feature(self, x: Union[torch.Tensor, List[torch.Tensor]]) -> torch.Tensor:
+        """
+        Return split into support and query sets.
 
         Args:
             x (torch.Tensor): input tensor
@@ -103,37 +146,11 @@ class MetaTemplate(nn.Module, ABC):
             z_support (torch.Tensor): support set
             z_query (torch.Tensor): query set
         """
-
-        # Make sure that each input tensor has gradient computation enabled
-        if isinstance(x, list):
-            x = [Variable(obj.to(self.device)) for obj in x]
-        else:
-            x = Variable(x.to(self.device))
-
-        # Get a 3D tensor of shape (n_way, n_support + n_query, feat_dim)
-        if is_feature:
-            z_all = x
-        else:
-            # First flatten the second dimension of the input tensor
-            # See the docstring of reshape2feature for more details
-            if isinstance(x, list):
-                x = [self.reshape2feature(x) for obj in x]
-            else:
-                x = self.reshape2feature(x)
-
-            # Extract features using the backbone
-            z_all = self.feature.forward(x)
-
-            # Apply SOT if provided
-            if self.SOT is not None:
-                z_all = self.SOT(z_all)  # Returns square matrix
-
-            # Now reshape back the tensor to (n_way, n_support + n_query, feat_dim)
-            z_all = z_all.view(self.n_way, self.n_support + self.n_query, -1)
+        assert x.ndim == 3, "Input tensor must be 3D. Call reshape2set() first."
 
         # Split the tensor into support and query sets
-        z_support = z_all[:, : self.n_support]
-        z_query = z_all[:, self.n_support :]
+        z_support = x[:, : self.n_support].reshape(self.n_way * self.n_support, -1)
+        z_query = x[:, self.n_support :].reshape(self.n_way * self.n_query, -1)
 
         return z_support, z_query
 
@@ -151,7 +168,8 @@ class MetaTemplate(nn.Module, ABC):
 
         # Run inference of the model on the input
         # Scores is of shape (n_way * n_query, n_way)
-        scores = self.set_forward(x)
+        outputs = self.set_forward(x)
+        scores = outputs["scores"]
 
         # Get the labels of the query set
         # Ex. n_way = 2, n_query = 3 -> y_query = [0, 0, 0, 1, 1, 1]
@@ -293,20 +311,6 @@ class MetaTemplate(nn.Module, ABC):
             y = Variable(y.to(self.device))
 
         return y
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        [Backbone] Extract features using the backbone of the model.
-
-        Args:
-            x (torch.Tensor): input 2D tensor
-
-        Returns:
-            out (torch.Tensor): tensor
-        """
-
-        out = self.feature.forward(x)
-        return out
 
     def train_loop(
         self,
@@ -455,58 +459,5 @@ class MetaTemplate(nn.Module, ABC):
 
         # Compute the final predictions for the query set
         scores = model(query)
-
-        return scores
-
-    def set_forward_adaptation(self, x, is_feature=True):
-        """
-        [Finetuning] Further of the model by freezing the backbone and training a new softmax clasifier
-        on the provided input's support set. The query set is used to evaluate the model.
-
-        Args:
-            x (torch.Tensor): input tensor
-            is_feature (bool): whether the input tensor is a feature tensor or not
-
-        Returns:
-            scores (torch.Tensor): scores of the query set of shape (n_way * n_query, n_way)
-        """
-
-        # Split the input into support and query sets (is_feature = True --> do not run backbone)
-        assert is_feature, "Feature is fixed in further adaptation"
-        z_support, z_query = self.parse_feature(x, is_feature)
-
-        # Flatten the second dimension of the query and support sets
-        z_support = z_support.contiguous().view(self.n_way * self.n_support, -1)
-        z_query = z_query.contiguous().view(self.n_way * self.n_query, -1)
-
-        # Create the labels of the support set
-        y_support = self.get_episode_labels(self.n_support, enable_grad=True)
-
-        # Set up the new softmax classifier
-        linear_clf = nn.Linear(self.feat_dim, self.n_way)
-        linear_clf = linear_clf.to(self.device)
-
-        # Set up the optimizer
-        set_optimizer = torch.optim.SGD(
-            linear_clf.parameters(),
-            lr=0.01,
-            momentum=0.9,
-            dampening=0.9,
-            weight_decay=0.001,
-        )
-
-        # Set up the loss function
-        loss_function = nn.CrossEntropyLoss()
-        loss_function = loss_function.to(self.device)
-
-        # Finetune the classifier
-        scores = self.adapt(
-            linear_clf,
-            set_optimizer,
-            (z_support, y_support),
-            z_query,
-            loss_function,
-            batch_size=4,
-        )
 
         return scores

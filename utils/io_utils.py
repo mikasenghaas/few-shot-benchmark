@@ -169,7 +169,9 @@ def get_exp_name(cfg: OmegaConf) -> Tuple[str, Dict]:
     n_way = cfg.n_way
     n_shot = cfg.n_shot
     exp_name = (
-        f"{method}-{dataset}{'-sot' if use_sot else ''}-{n_way}-way-{n_shot}-shot"
+        (f"{method}-{dataset}{'-sot' if use_sot else ''}-{n_way}-way-{n_shot}-shot")
+        if not cfg.name
+        else cfg.name
     )
     exp_params = {
         "method": method,
@@ -284,9 +286,7 @@ def print_cfg(cfg: OmegaConf):
     table.add_row(exp_params.values())
     print(table)
 
-    print(
-        f"\n📣 For full configuration, see {cfg.paths.log_dir}/.hydra/config.yaml\n\n"
-    )
+    print(f"\n📣 For full configuration, see {cfg.paths.log_dir}/.hydra/config.yaml\n\n")
 
 
 def get_logger(name: str, cfg: OmegaConf) -> logging.Logger:
