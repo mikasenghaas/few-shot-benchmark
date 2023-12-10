@@ -4,3 +4,5 @@ defaults:
 name: matchingnet
 cls:
   _target_: methods.matchingnet.MatchingNet
+  embed_support: true
+  embed_query: true

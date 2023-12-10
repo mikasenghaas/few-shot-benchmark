@@ -15,6 +15,7 @@ class ProtoNet(MetaTemplate):
         n_way: int,
         n_support: int,
         similarity: str = "euclidean",
+        embed_support: bool = True,
         **kwargs,
     ):
         """Protonet Meta Learner - compute the prototypes based on the support set and then
@@ -34,7 +35,11 @@ class ProtoNet(MetaTemplate):
         self.loss_fn = nn.CrossEntropyLoss()
         self.similarity_type = similarity
 
-        self.encoder = nn.LSTM(self.feat_dim, self.feat_dim, 1, bidirectional=True)
+        self.embed_support = (
+            nn.LSTM(self.feat_dim, self.feat_dim, 1, bidirectional=True)
+            if embed_support
+            else None
+        )
 
         # Define device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -75,7 +80,7 @@ class ProtoNet(MetaTemplate):
         assert x.ndim == 2, "Input tensor must be 2D. Call `reshape2feature()` first."
 
         # Re-embed the support set
-        out, _ = self.encoder(x)
+        out, _ = self.embed_support(x)
         x = x + out[:, : self.feat_dim] + out[:, self.feat_dim :]
 
         return x
@@ -115,7 +120,7 @@ class ProtoNet(MetaTemplate):
         if return_intermediates:
             outputs["backbone"] = self.reshape2set(x)
 
-        # Run SOT if specified
+        # Run SOT (if specified)
         if self.sot:
             x = self.forward_sot(x)
             if return_intermediates:
@@ -124,10 +129,11 @@ class ProtoNet(MetaTemplate):
         # Split support and query
         x_support, x_query = self.parse_feature(self.reshape2set(x))
 
-        # Run LSTM embedder
-        x_support = self.forward_support_lstm(x_support)
-        if return_intermediates:
-            outputs["lstm"] = self.reshape2set(torch.cat([x_support, x_query]))
+        # Run LSTM embedder (if specified)
+        if self.encoder:
+            x_support = self.forward_support_lstm(x_support)
+            if return_intermediates:
+                outputs["lstm"] = self.reshape2set(torch.cat([x_support, x_query]))
 
         # Get the prototypes for each class by averaging the support embeddings
         proto = x_support.view(self.n_way, self.n_support, -1).mean(1)

@@ -11,7 +11,15 @@ from typing import Union, List
 
 
 class MatchingNet(MetaTemplate):
-    def __init__(self, backbone: torch.nn.Module, n_way: int, n_support: int, **kwargs):
+    def __init__(
+        self,
+        backbone: torch.nn.Module,
+        n_way: int,
+        n_support: int,
+        embed_support: bool = True,
+        embed_query: bool = True,
+        **kwargs
+    ):
         """
         MatchingNet implementation. TODO: add more explanation
 
@@ -19,6 +27,8 @@ class MatchingNet(MetaTemplate):
             backbone (torch.nn.Module) : backbone network for the method
             n_way (int) : number of classes in a task
             n_support (int) : number of support samples per class
+            embed_support (bool) : whether to embed the support set
+            embed_query (bool) : whether to embed the query set
         """
 
         # Init the parent class
@@ -33,9 +43,13 @@ class MatchingNet(MetaTemplate):
         self.softmax = nn.Softmax(dim=1)
 
         # Define the encoders for support and query
-        self.encode_query = FullyContextualEmbedding(self.feat_dim)
-        self.encode_support = nn.LSTM(
-            self.feat_dim, self.feat_dim, 1, bidirectional=True
+        self.embed_support = (
+            nn.LSTM(self.feat_dim, self.feat_dim, 1, bidirectional=True)
+            if embed_support
+            else None
+        )
+        self.embed_query = (
+            FullyContextualEmbedding(self.feat_dim) if embed_query else None
         )
 
         # Define the device
@@ -53,7 +67,7 @@ class MatchingNet(MetaTemplate):
         assert x.ndim == 2, "Input tensor must be 2D. Call `reshape2feature()` first."
 
         # Re-embed the support set
-        out, _ = self.encode_support(x)
+        out, _ = self.embed_support(x)
         x = x + out[:, : self.feat_dim] + out[:, self.feat_dim :]
 
         x_norm = torch.norm(x, p=2, dim=1).unsqueeze(1).expand_as(x)  # L2 norm
@@ -71,63 +85,12 @@ class MatchingNet(MetaTemplate):
             x (torch.Tensor): input tensor of shape (n_way * n_query, feat_dim)
 
         """
-        x = self.encode_query(x_query, x_support)
+        x = self.embed_query(x_query, x_support)
 
         x_norm = torch.norm(x, p=2, dim=1).unsqueeze(1).expand_as(x)
         x_normalised = x.div(x_norm + 0.00001)  # shape = (n_way * n_query, feat_dim)
 
         return x, x_normalised
-
-    def get_logprobs(
-        self,
-        z_query: torch.Tensor,
-        G: torch.Tensor,
-        G_normalized: torch.Tensor,
-        Y_S: torch.Tensor,
-        FCE: torch.nn.Module = None,
-    ):
-        """
-        Get the log probabilities of the query set
-
-        Args:
-            z_query (torch.Tensor) : query set of shape (n_way * n_query, feat_dim)
-            G (torch.Tensor) : encoded support set of shape (n_way * n_support, feat_dim)
-            G_normalized (torch.Tensor) : normalized encoded support set  of shape (n_way * n_support, feat_dim)
-            Y_S (torch.Tensor) : one-hot encoding of the support set labels of shape (n_way * n_support, n_way)
-            FCE (torch.nn.Module) : fully contextual embedder
-
-        Returns:
-            logprobs (torch.Tensor) : log probabilities of shape (n_way * n_query, n_way)
-        """
-
-        # Define the Fully Contextual Embedder if not defined
-        if FCE is None:
-            FCE = self.FCE
-
-        # Obtain the Normalised Fully Contextual Embedding of the query set
-        # Shape of F = (n_way * n_query, feat_dim) --> each query embedding is now a weighted sum of the support set embeddings
-        F = FCE(z_query, G)
-        F_norm = (
-            torch.norm(F, p=2, dim=1).unsqueeze(1).expand_as(F)
-        )  # L2 norm of each embedding
-        F_normalized = F.div(F_norm + 0.00001)  # shape = (n_way * n_query, feat_dim)
-
-        # Obtain the scores of each class
-        # First apply the dot product between the normalized query and support set embeddings: shape = (n_way * n_query, n_way * n_support)
-        # Then apply the ReLU activation function and multiply by 100 to strengthen the highest probability after softmax
-        scores = self.relu(F_normalized.mm(G_normalized.transpose(0, 1))) * 100
-
-        # For each query embedding, obtain the importantce of each support embedding (we softmax along the rows)
-        softmax = self.softmax(scores)
-
-        # However, we want to obtain the importance of each class, not each support embedding
-        # So we multiply the softmax scores by the one-hot encoding of the support set labels
-        # Therefore we do (n_way * n_query, n_way * n_support) x (n_way * n_support, n_way) = (n_way * n_query, n_way)
-        # Thus for each query and class, using the Y_S one-hot encoding, we obtain the importance of each class by only taking
-        # the probability of the support set embeddings of that class
-        logprobs = (softmax.mm(Y_S) + 1e-6).log()
-
-        return logprobs
 
     def set_forward(
         self,
@@ -174,10 +137,13 @@ class MatchingNet(MetaTemplate):
         x_query = x_query.contiguous().view(self.n_way * self.n_query, -1)
 
         # Encode the support and query sets using an LSTM
-        x_support, x_support_normalised = self.forward_support_lstm(x_support)
-        x_query, x_query_normalised = self.forward_query_lstm(x_query, x_support)
-        if return_intermediates:
-            outputs["lstm"] = self.reshape2set(torch.cat([x_support, x_query]))
+        if self.embed_support:
+            x_support, x_support_normalised = self.forward_support_lstm(x_support)
+        if self.embed_query:
+            x_query, x_query_normalised = self.forward_query_lstm(x_query, x_support)
+        if self.embed_support or self.embed_query:
+            if return_intermediates:
+                outputs["lstm"] = self.reshape2set(torch.cat([x_support, x_query]))
 
         # Get the log probabilities for each class
         cos_similarity = x_query_normalised @ x_support_normalised.T
