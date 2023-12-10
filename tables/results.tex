@@ -1,0 +1,22 @@
+\begin{table}[h]
+\caption{Results of the benchmark experiment.}
+\label{tab:results}
+\centering
+\begin{tabular}{llrrr}
+\toprule
+ &  & Acc & Acc w/ SOT & Diff (\%) \\
+\midrule
+\multirow[c]{5}{*}{Tabula Muris} & B & 91.19 & 85.95 & -5.75 \\
+ & B++ & 81.88 & 20.00 & -75.57 \\
+ & MAML & 87.55 & 98.52 & \bfseries 12.53 \\
+ & MT & 84.55 & 99.22 & \bfseries 17.35 \\
+ & PT & 87.51 & 98.23 & \bfseries 12.25 \\
+\midrule
+\multirow[c]{5}{*}{SwissProt} & B & 68.09 & 55.90 & -17.90 \\
+ & B++ & 62.89 & 64.63 & \bfseries 2.78 \\
+ & MAML & 61.70 & 97.10 & \bfseries 57.37 \\
+ & MT & 65.77 & 99.45 & \bfseries 51.20 \\
+ & PT & 60.80 & 99.83 & \bfseries 64.20 \\
+\bottomrule
+\end{tabular}
+\end{table}
