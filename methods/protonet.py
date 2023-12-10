@@ -130,7 +130,7 @@ class ProtoNet(MetaTemplate):
         x_support, x_query = self.parse_feature(self.reshape2set(x))
 
         # Run LSTM embedder (if specified)
-        if self.encoder:
+        if self.embed_support:
             x_support = self.forward_support_lstm(x_support)
             if return_intermediates:
                 outputs["lstm"] = self.reshape2set(torch.cat([x_support, x_query]))

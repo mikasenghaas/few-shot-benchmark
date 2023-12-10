@@ -138,15 +138,15 @@ class MatchingNet(MetaTemplate):
 
         # Encode the support and query sets using an LSTM
         if self.embed_support:
-            x_support, x_support_normalised = self.forward_support_lstm(x_support)
+            _, x_support = self.forward_support_lstm(x_support)
         if self.embed_query:
-            x_query, x_query_normalised = self.forward_query_lstm(x_query, x_support)
+            _, x_query = self.forward_query_lstm(x_query, x_support)
         if self.embed_support or self.embed_query:
             if return_intermediates:
                 outputs["lstm"] = self.reshape2set(torch.cat([x_support, x_query]))
 
         # Get the log probabilities for each class
-        cos_similarity = x_query_normalised @ x_support_normalised.T
+        cos_similarity = x_query @ x_support.T
         probs = self.softmax(self.relu(cos_similarity) * 100)
 
         # Get the labels of the support set
