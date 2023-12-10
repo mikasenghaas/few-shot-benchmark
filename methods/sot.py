@@ -97,7 +97,7 @@ class SOT(object):
         """
         Compute the pairwise cosine similarity between a matrix to itself.
         """
-        d_n = a / a.norm(dim=-1, keepdim=True)
+        d_n = a / ( a.norm(dim=-1, keepdim=True) + eps) # small epsilon to avoid division by zero
         if len(a.shape) > 2:
             C = torch.bmm(d_n, d_n.transpose(1, 2))
         else:
