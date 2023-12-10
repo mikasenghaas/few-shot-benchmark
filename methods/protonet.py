@@ -63,6 +63,26 @@ class ProtoNet(MetaTemplate):
         else:
             raise NotImplementedError("Similarity type not implemented")
 
+    def reencode(self, x: torch.Tensor) -> torch.Tensor:
+        """Re-encode the input tensor.
+
+        Args:
+            x (torch.Tensor): input tensor of shape (n_way * n_query, feat_dim)
+
+        Returns:
+            torch.Tensor: re-encoded tensor of shape (n_way * n_query, feat_dim)
+        """
+
+        # Make sure the tensors are contiguous in the memory
+        x = x.contiguous()
+
+        # Re-embed the support set
+        x = x.view(self.n_way * self.n_support, -1)
+        out, _ = self.encoder(x)
+        x = x + out[:, : self.feat_dim] + out[:, self.feat_dim :]
+
+        return x
+
     def set_forward(
         self, x: Union[torch.Tensor, List[torch.Tensor]], is_feature: bool = False
     ) -> torch.Tensor:
@@ -87,9 +107,7 @@ class ProtoNet(MetaTemplate):
         z_support = z_support.contiguous()
 
         # Re-embed the support set
-        z_support = z_support.view(self.n_way * self.n_support, -1)
-        out, _ = self.encoder(z_support)
-        z_support = z_support + out[:, : self.feat_dim] + out[:, self.feat_dim :]
+        z_support = self.reencode(z_support)
 
         # Get the prototypes for each class by averaging the support embeddings
         z_proto = z_support.view(self.n_way, self.n_support, -1).mean(1)
