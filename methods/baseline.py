@@ -72,7 +72,7 @@ class Baseline(MetaTemplate):
             return_intermediates (bool): whether to return the intermediate features
 
         Returns:
-            out (torch.Tensor): the output of the backbone
+            out (dict): the output of the model
         """
 
         # Initialise outputs dict
@@ -80,19 +80,18 @@ class Baseline(MetaTemplate):
 
         # Extract the features
         x = self.forward_backbone(x)
-        if self.intermediates:
+        if return_intermediates:
             outputs["backbone"] = x
 
-        if self.SOT:
-            x = self.SOT(x)
-            if self.intermediates:
+        if self.sot:
+            x = self.sot(x)
+            if return_intermediates:
                 outputs["sot"] = x
 
         scores = self.classifier.forward(x)
-        if self.intermediates:
-            outputs["scores"] = scores
+        outputs["scores"] = scores
 
-        return scores
+        return outputs
 
     def set_forward_loss(self, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         """
@@ -254,7 +253,6 @@ class Baseline(MetaTemplate):
             batch_size=4,
         )
 
-        if return_intermediates:
-            outputs["scores"] = scores
+        outputs["scores"] = scores
 
         return outputs
