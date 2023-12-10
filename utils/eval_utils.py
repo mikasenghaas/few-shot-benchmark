@@ -496,14 +496,14 @@ def compute_metrics(
 
     return df
 
-def exp2results(df : pd.DataFrame) -> pd.DataFrame:
 
+def exp2results(df: pd.DataFrame) -> pd.DataFrame:
     """
     Extracts the results of the experiments from the given DataFrame.
 
     Args:
         df (pd.DataFrame): DataFrame containing all runs
-    
+
     Returns:
         df_results (pd.DataFrame): DataFrame containing the results of the experiments
     """
@@ -512,8 +512,8 @@ def exp2results(df : pd.DataFrame) -> pd.DataFrame:
     df = df.sort_values(by=[("config", "method")])
 
     # Get the test accuracy for each method w/ and w/o SOT
-    sot_test_acc = df[df[("config", "use_sot")] == True][("eval", "test/acc")].values
-    test_acc = df[df[("config", "use_sot")] == False][("eval", "test/acc")].values
+    sot_test_acc = df[df[("config", "use_sot")]][("eval", "test/acc")].values
+    test_acc = df[~df[("config", "use_sot")]][("eval", "test/acc")].values
 
     # Get the methods name and remap them to the styled names
     remmaping = {
@@ -521,40 +521,41 @@ def exp2results(df : pd.DataFrame) -> pd.DataFrame:
         "baseline_pp": "B++",
         "matchingnet": "MT",
         "protonet": "PT",
-        "maml": "MAML"
+        "maml": "MAML",
     }
     methods = sorted(df[("config", "method")].unique())
     methods = [remmaping[method] for method in methods]
 
     # Create a dataframe with the results
-    df_results = pd.DataFrame({
-        "Method": methods,
-        "Acc": test_acc,
-        "Acc w/ SOT": sot_test_acc,
-        "Diff" : (sot_test_acc - test_acc) / test_acc * 100
-    })
+    df_results = pd.DataFrame(
+        {
+            "Method": methods,
+            "Acc": test_acc,
+            "Acc w/ SOT": sot_test_acc,
+            "Diff": (sot_test_acc - test_acc) / test_acc * 100,
+        }
+    )
 
     # Round the results
     df_results = df_results.round(2)
 
     return df_results
 
-def exp2latex(df : pd.DataFrame) -> str:
+
+def exp2latex(df: pd.DataFrame) -> str:
     """
     Converts the given DataFrame to a latex table.
 
     Args:
         df (pd.DataFrame): DataFrame containing all runs
-    
+
     Returns:
         latex (str): Latex table
     """
 
     # Style the results
-    df_styled = (
-        df.style
-        .format(precision=2)
-        .map(lambda x: "font-weight: bold" if x > 0 else "", subset=["Diff"])
+    df_styled = df.style.format(precision=2).map(
+        lambda x: "font-weight: bold" if x > 0 else "", subset=["Diff"]
     )
 
     # Convert to latex
@@ -569,11 +570,15 @@ def exp2latex(df : pd.DataFrame) -> str:
         convert_css=True,
     )
 
-    # Add Midrule between dataset tables 
+    # Add Midrule between dataset tables
     search_term = r"\multirow[c]{5}{*}{SwissProt}"
     index_to_insert_midrule = latex.find(search_term)
     if index_to_insert_midrule != -1:
-        latex = latex[:index_to_insert_midrule] + "\\midrule\n" + latex[index_to_insert_midrule:]
+        latex = (
+            latex[:index_to_insert_midrule]
+            + "\\midrule\n"
+            + latex[index_to_insert_midrule:]
+        )
     else:
         print("❌ Could not find the row to insert the midrule.")
 
@@ -584,7 +589,10 @@ def exp2latex(df : pd.DataFrame) -> str:
     search_term = r" & Method &  &  &  \\"
     index_to_erase = latex.find(search_term)
     if index_to_erase != -1:
-        latex = latex[:index_to_erase] + latex[index_to_erase:].replace(search_term, "").strip()
+        latex = (
+            latex[:index_to_erase]
+            + latex[index_to_erase:].replace(search_term, "").strip()
+        )
     else:
         print("❌ Could not find the row to erase.")
 
@@ -592,7 +600,11 @@ def exp2latex(df : pd.DataFrame) -> str:
     search_term = r"\begin{tabular}"
     index_to_insert_centering = latex.find(search_term)
     if index_to_insert_centering != -1:
-        latex = latex[:index_to_insert_centering] + "\\centering\n" + latex[index_to_insert_centering:]
+        latex = (
+            latex[:index_to_insert_centering]
+            + "\\centering\n"
+            + latex[index_to_insert_centering:]
+        )
     else:
         print("❌ Could not find the row to insert centering.")
 
