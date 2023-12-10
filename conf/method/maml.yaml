@@ -19,5 +19,5 @@ method:
 hydra:
   sweeper:
     params:
-      method.task_update_num: 1,5,10
+      method.task_update_num: 5,10
       method.maml_inner_lr: 0.1,0.01

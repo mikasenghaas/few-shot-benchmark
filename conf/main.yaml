@@ -50,12 +50,16 @@ hydra:
   sweeper:
     params:
       train.lr: 0.0005,0.001
+      sot.distance: cosine,euclidean
+      sot.ot_reg: 0.1,1
 
 sot:
+  distance: cosine
+  ot_reg: 0.1
   cls:
     _target_: methods.sot.SOT
-    distance_metric: cosine
-    ot_reg: 0.1
+    distance_metric: ${sot.distance}
+    ot_reg: ${sot.ot_reg}
     sinkhorn_iterations: 10
     sigmoid: false
     mask_diag: true
