@@ -121,7 +121,7 @@ class TMDataset(FewShotDataset, ABC):
 
         # Convert features and targets to numpy arrays
         samples = self.data.X
-        targets = self.data.obs["label"]
+        targets = self.data.obs["label"].cat.codes.to_numpy(dtype=np.int32)
 
         return samples, targets
 
