@@ -3,6 +3,7 @@ defaults:
   - dataset: null
   - _self_
 
+name: null # Optionally set a name for the experiment
 group: ??? # Group the experiment should be associated to
 
 # Experiment configuration
