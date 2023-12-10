@@ -4,7 +4,11 @@ import hydra
 import pandas as pd
 import numpy as np
 import torch
+import torch.nn as nn
 from tqdm import tqdm
+from matplotlib import pyplot as plt
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.decomposition import PCA
 
 
 def extract_runid(run: Run) -> str:
@@ -176,13 +180,13 @@ def init_model(cfg: dict, dim: int) -> torch.nn.Module:
 
 
 def init_run(
-    run_config: dict, root_dir: str, data_mode: str = "test"
+    run, root_dir: str, data_mode: str = "test"
 ) -> tuple[torch.utils.data.Dataset, torch.utils.data.DataLoader, torch.nn.Module]:
     """
     Initialize run by initializing dataloader and model.
 
     Args:
-        run_config (dict): Hydra config
+        run (wandb.Run): W&B run
         data_mode (str): Split to use
 
     Returns:
@@ -190,9 +194,12 @@ def init_run(
         loader (torch.utils.data.DataLoader): Dataloader for given split
         model (torch.nn.Module): Model initialized with given config
     """
+    # Extract the hydra config
+    config = run.config
 
-    dataset, loader = init_dataloader(run_config, root_dir, mode=data_mode)
-    model = init_model(run_config, dataset.dim)
+    # Initialise dataset and model
+    dataset, loader = init_dataloader(config, root_dir, mode=data_mode)
+    model = init_model(config, dataset.dim)
 
     return dataset, loader, model
 
@@ -236,6 +243,109 @@ def eval_run(
         episodes_results.append((y_true, y_pred))
 
     return episodes_results
+
+
+def visualise_episode(
+    loader: torch.utils.data.DataLoader,
+    model: nn.Module | None = None,
+    show: str = "input",
+    ax: plt.Axes | None = None,
+):
+    """
+    Visualise an episode of a few-shot learning dataset.
+
+    Args:
+        loader (torch.data.utils.Dataloader): An episodic data loader
+        model (torch.nn.Module): Model to evaluate
+        embedding (str): Embedding to use for visualisation (one of `input`, `backbone`, `lstm`)
+        ax (plt.Axes): Axes to use for plotting
+    """
+
+    if not ax:
+        _, axs = plt.subplots(figsize=(5, 5))
+
+    # Initialise transformers
+    scaler = StandardScaler()
+    pca = PCA(n_components=2)
+    encoder = LabelEncoder()
+
+    # Get the episode parameters
+    n_way = loader.dataset.n_way
+    n_support = loader.dataset.n_support
+    n_query = loader.dataset.n_query
+    feat_dim = loader.dataset.dim
+
+    # Get the episode data
+    x, y = next(iter(loader))
+
+    if show == "backbone" or show == "lstm":
+        xs, xq = model.parse_feature(x, is_feature=False)
+        x = torch.cat([xs, xq], dim=1).detach().numpy()
+        feat_dim = x.shape[-1]
+    if show == "lstm":
+        xs = model.reencode(xs)
+        xs = xs.view(n_way, n_support, -1)
+        x = torch.cat([xs, xq], dim=1).detach().numpy()
+
+    # Flatten
+    xf = x.reshape(-1, feat_dim)
+    yf = y.reshape(-1)
+
+    # PCA transform features and integer-encode labels
+    x = pca.fit_transform(scaler.fit_transform(xf))
+    y = encoder.fit_transform(yf)
+
+    # Reshape back
+    x = x.reshape(n_way, n_support + n_query, -1)
+    y = y.reshape(n_way, n_support + n_query)
+
+    # Split into support and query sets
+    xs, xq = x[:, :n_support], x[:, n_support:]
+    ys, yq = y[:, :n_support], y[:, n_support:]
+
+    # Compute prototype
+    proto = xs.mean(1)
+    proto_c = ys[:, 0]
+
+    # Re-flatten
+    xs, ys = xs.reshape(-1, 2), ys.reshape(-1)
+    xq, yq = xq.reshape(-1, 2), yq.reshape(-1)
+
+    # Plot the data
+    ax.scatter(
+        proto[:, 0],
+        proto[:, 1],
+        c=proto_c,
+        cmap="brg",
+        s=200,
+        marker="*",
+        label="Prototype",
+    )
+    ax.scatter(
+        xs[:, 0],
+        xs[:, 1],
+        c=ys,
+        cmap="brg",
+        s=100,
+        alpha=0.05,
+        marker="*",
+        label="Support",
+    )
+    ax.scatter(
+        xq[:, 0],
+        xq[:, 1],
+        c=yq,
+        cmap="brg",
+        s=100,
+        alpha=0.75,
+        marker="o",
+        label="Query",
+    )
+
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
 
 
 def compute_metrics(
