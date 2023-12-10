@@ -58,28 +58,65 @@ class MAML(MetaTemplate):
         # Define the device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    def forward(self, x: Union[List[torch.Tensor], torch.Tensor]) -> torch.Tensor:
+    def forward(self, x, return_intermediates: bool = False):
         """
-        Run backbone and classifier on input data.
+        Forwards an input of support and query samples through the model.
+        Runs the backbone, SOT (if specified) and the classifier on the input.
 
         Args:
-            x (Union[List[torch.Tensor], torch.Tensor]) : input data of shape (batch_size, *)
+            x (torch.Tensor) : input tensor of shape (batch_size, *)
+            return_intermediates (bool) : whether to return the intermediate features
 
         Returns:
-            scores (torch.Tensor) : scores of shape (n_way * n_query, n_way)
+            outputs (dict) : dictionary containing the outputs of the model
         """
-        scores = self.classifier.forward(x)
-        return scores
+        # Initialise outputs dict
+        outputs = {}
 
-    def set_forward(self, x: Union[List[torch.Tensor], torch.Tensor]) -> torch.Tensor:
+        x = self.reshape2feature(x)
+        if return_intermediates:
+            outputs["input"] = self.reshape2set(x)
+
+        # Run backbone
+        x = self.forward_backbone(x)
+        if return_intermediates:
+            outputs["backbone"] = self.reshape2set(x)
+
+        # Run SOT if specified
+        if self.sot:
+            x = self.forward_sot(x)
+            if return_intermediates:
+                outputs["sot"] = self.reshape2set(x)
+
+        # Run classification head
+        scores = self.classifier.forward(x)
+
+        # Split and reshape the scores
+        scores_support, scores_query = self.parse_feature(self.reshape2set(scores))
+        scores_support = scores_support.contiguous().view(
+            self.n_way * self.n_support, -1
+        )
+        scores_query = scores_query.contiguous().view(self.n_way * self.n_query, -1)
+
+        outputs["scores_support"] = scores_support
+        outputs["scores"] = scores_query
+
+        return outputs
+
+    def set_forward(
+        self,
+        x: torch.Tensor,
+        return_intermediates: bool = False,
+    ) -> torch.Tensor:
         """
         Run backbone and classifier on input data and perform adaptation.
 
         Args:
             x (Union[List[torch.Tensor], torch.Tensor]) : input data of shape (batch_size, *)
+            return_intermediates (bool): whether to return the intermediate features
 
         Returns:
-            scores (torch.Tensor) : scores of shape (n_way * n_query, n_way)
+            outputs (dict) : dictionary containing the outputs of the model
 
         Notes:
             We initialize the fast parameters with the current parameters of the model, i.e., the so called
@@ -88,6 +125,9 @@ class MAML(MetaTemplate):
             parameters with the gradients. We repeat this process for task_update_num iterations. Finally,
             we use the fast parameters to compute the loss on the query set.
         """
+
+        # Dynamically set the number of support samples
+        self.set_nquery(x)
 
         # Get fast parameters
         fast_parameters = list(self.parameters())
@@ -104,15 +144,11 @@ class MAML(MetaTemplate):
 
         # Try to adapt the model to the given support set
         for _ in range(self.task_update_num):
-            # Parse the input data: backbone + (SOT) + flatten
-            x_support, x_query = self.parse_feature(x, is_feature=False)
-
-            # Flatten
-            x_support = x_support.contiguous().view(self.n_way * self.n_support, -1)
-            x_query = x_query.contiguous().view(self.n_way * self.n_query, -1)
+            # Forward the the episode through the model (extract support scores)
+            outputs = self.forward(x)
+            scores = outputs["scores_support"]
 
             # Compute the predictions and loss for the support set
-            scores = self.forward(x_support)
             set_loss = self.loss_fn(scores, y_support)
 
             # Build full graph support gradient of gradient
@@ -134,9 +170,9 @@ class MAML(MetaTemplate):
                 fast_parameters.append(weight.fast)
 
         # Compute the scores for the query set
-        scores = self.forward(x_query)
+        outputs = self.forward(x, return_intermediates=return_intermediates)
 
-        return scores
+        return outputs
 
     def set_forward_adaptation(
         self, x: Union[List[torch.Tensor], torch.Tensor], is_feature: bool = False
@@ -157,11 +193,12 @@ class MAML(MetaTemplate):
             torch.Tensor: loss tensor
         """
 
+        # Compute the scores
+        outputs = self.set_forward(x)
+        scores = outputs["scores"]
+
         # Get the query labels
         y_query = self.get_episode_labels(self.n_query, enable_grad=True)
-
-        # Compute the scores
-        scores = self.set_forward(x)
 
         # Compute the cross entropy loss
         loss = self.loss_fn(scores, y_query)
@@ -197,9 +234,6 @@ class MAML(MetaTemplate):
         for i, (x, _) in pbar:
             # Reset the gradients
             optimizer.zero_grad()
-
-            # Setup the number of query samples
-            self.set_nquery(x)
 
             # Check if the number of classes is correct
             n_way = x.size(0)

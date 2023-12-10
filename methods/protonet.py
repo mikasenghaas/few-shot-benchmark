@@ -15,6 +15,7 @@ class ProtoNet(MetaTemplate):
         n_way: int,
         n_support: int,
         similarity: str = "euclidean",
+        embed_support: bool = True,
         **kwargs,
     ):
         """Protonet Meta Learner - compute the prototypes based on the support set and then
@@ -34,7 +35,11 @@ class ProtoNet(MetaTemplate):
         self.loss_fn = nn.CrossEntropyLoss()
         self.similarity_type = similarity
 
-        self.encoder = nn.LSTM(self.feat_dim, self.feat_dim, 1, bidirectional=True)
+        self.embed_support = (
+            nn.LSTM(self.feat_dim, self.feat_dim, 1, bidirectional=True)
+            if embed_support
+            else None
+        )
 
         # Define device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -63,28 +68,27 @@ class ProtoNet(MetaTemplate):
         else:
             raise NotImplementedError("Similarity type not implemented")
 
-    def reencode(self, x: torch.Tensor) -> torch.Tensor:
-        """Re-encode the input tensor.
+    def forward_support_lstm(self, x: torch.Tensor) -> torch.Tensor:
+        """Re-encode an input tensor of support samples using an LSTM.
 
         Args:
-            x (torch.Tensor): input tensor of shape (n_way * n_query, feat_dim)
+            x (torch.Tensor): input tensor of shape (n_way * n_support, feat_dim)
 
         Returns:
-            torch.Tensor: re-encoded tensor of shape (n_way * n_query, feat_dim)
+            torch.Tensor: re-encoded tensor of shape (n_way * n_support, feat_dim)
         """
-
-        # Make sure the tensors are contiguous in the memory
-        x = x.contiguous()
+        assert x.ndim == 2, "Input tensor must be 2D. Call `reshape2feature()` first."
 
         # Re-embed the support set
-        x = x.view(self.n_way * self.n_support, -1)
-        out, _ = self.encoder(x)
+        out, _ = self.embed_support(x)
         x = x + out[:, : self.feat_dim] + out[:, self.feat_dim :]
 
         return x
 
     def set_forward(
-        self, x: Union[torch.Tensor, List[torch.Tensor]], is_feature: bool = False
+        self,
+        x: Union[torch.Tensor, List[torch.Tensor]],
+        return_intermediates: bool = False,
     ) -> torch.Tensor:
         """
         [MetaTraining] Compute the prototypes based on the support set and then
@@ -93,36 +97,58 @@ class ProtoNet(MetaTemplate):
 
         Args:
             x (Union[torch.Tensor, List[torch.Tensor]]): input tensor
-            is_feature (bool, optional): whether the input is feature or not. Defaults to False.
-            Determines whether the backbone is run on the input or not.
+            return_intermediates (bool, optional): whether to save the intermediate tensors during the forward pass. Defaults to False.
 
         Returns:
-            torch.Tensor: output tensor of shape (n_way * n_query, n_way)
+            output: dict containing the scores and optionally the intermediate tensors
         """
 
-        # Get the support and query embeddings
-        z_support, z_query = self.parse_feature(x, is_feature)
+        # Set the number of query samples dynamically
+        self.set_nway(x)
+        self.set_nquery(x)
 
-        # Make sure the tensors are contiguous in the memory
-        z_support = z_support.contiguous()
+        # Initialise outputs dict
+        outputs = {}
 
-        # Re-embed the support set
-        z_support = self.reencode(z_support)
+        # Reshape input to 2d tensor of shape (n_way * (n_support + n_query), feat_dim)
+        x = self.reshape2feature(x)
+        if return_intermediates:
+            outputs["input"] = self.reshape2set(x)
+
+        # Run backbone
+        x = self.forward_backbone(x)
+        if return_intermediates:
+            outputs["backbone"] = self.reshape2set(x)
+
+        # Run SOT (if specified)
+        if self.sot:
+            x = self.forward_sot(x)
+            if return_intermediates:
+                outputs["sot"] = self.reshape2set(x)
+
+        # Split support and query
+        x_support, x_query = self.parse_feature(self.reshape2set(x))
+
+        # Run LSTM embedder (if specified)
+        if self.embed_support:
+            x_support = self.forward_support_lstm(x_support)
+            if return_intermediates:
+                outputs["lstm"] = self.reshape2set(torch.cat([x_support, x_query]))
 
         # Get the prototypes for each class by averaging the support embeddings
-        z_proto = z_support.view(self.n_way, self.n_support, -1).mean(1)
+        proto = x_support.view(self.n_way, self.n_support, -1).mean(1)
 
         # Turn query into shape (n_way * n_query, feat_dim)
-        z_query = z_query.contiguous().view(self.n_way * self.n_query, -1)
+        x_query = x_query.contiguous().view(self.n_way * self.n_query, -1)
 
         # Compute the euclidean distance between the query and the prototypes
-        dists = self.get_similarity(z_query, z_proto)
+        dists = self.get_similarity(x_query, proto)
 
         # Compute the scores by inverting the distances
-        # (the higher the distance, the lower the score)
         scores = -dists
+        outputs["scores"] = scores
 
-        return scores
+        return outputs
 
     def set_forward_loss(
         self, x: Union[torch.Tensor, List[torch.Tensor]]
@@ -140,7 +166,8 @@ class ProtoNet(MetaTemplate):
         y_query = self.get_episode_labels(self.n_query, enable_grad=True)
 
         # Compute the scores
-        scores = self.set_forward(x)
+        outputs = self.set_forward(x)
+        scores = outputs["scores"]
 
         # Compute the loss
         loss = self.loss_fn(scores, y_query)
