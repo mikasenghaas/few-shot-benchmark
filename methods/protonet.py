@@ -63,15 +63,14 @@ class ProtoNet(MetaTemplate):
         else:
             raise NotImplementedError("Similarity type not implemented")
 
-    def forward_lstm(self, x: torch.Tensor) -> torch.Tensor:
-        """Re-encode an input tensor using an LSTM. Is used to re-encode the support set,
-        query set or both.
+    def forward_support_lstm(self, x: torch.Tensor) -> torch.Tensor:
+        """Re-encode an input tensor of support samples using an LSTM.
 
         Args:
-            x (torch.Tensor): input tensor of shape (n_way * n_query, feat_dim)
+            x (torch.Tensor): input tensor of shape (n_way * n_support, feat_dim)
 
         Returns:
-            torch.Tensor: re-encoded tensor of shape (n_way * n_query, feat_dim)
+            torch.Tensor: re-encoded tensor of shape (n_way * n_support, feat_dim)
         """
         assert x.ndim == 2, "Input tensor must be 2D. Call `reshape2feature()` first."
 
@@ -126,7 +125,7 @@ class ProtoNet(MetaTemplate):
         x_support, x_query = self.parse_feature(self.reshape2set(x))
 
         # Run LSTM embedder
-        x_support = self.forward_lstm(x_support)
+        x_support = self.forward_support_lstm(x_support)
         if return_intermediates:
             outputs["lstm"] = self.reshape2set(torch.cat([x_support, x_query]))
 
