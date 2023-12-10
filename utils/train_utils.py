@@ -23,7 +23,7 @@ from utils.io_utils import (
 )
 
 
-def initialize_dataset_model(cfg: DictConfig, device: torch.device):
+def initialize_dataset_model(cfg: DictConfig, device: torch.device, root: str = "./"):
     """
     Initialise dataset and model based on config file and returns
     the data loaders and model.
@@ -48,6 +48,7 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
             train_dataset = instantiate(
                 cfg.dataset.simple_cls,
                 batch_size=cfg.train.batch_size,
+                root=os.path.join(root, "data"),
                 mode="train",
             )
         case "meta":
@@ -55,7 +56,10 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
                 f"Initializing train {cfg.dataset.set_cls._target_}. (Using {(100 * cfg.dataset.subset):.0f}%)"
             )
             train_dataset = instantiate(
-                cfg.dataset.set_cls, mode="train", n_episodes=100
+                cfg.dataset.set_cls,
+                mode="train",
+                n_episodes=100,
+                root=os.path.join(root, "data"),
             )
         case _:
             raise ValueError(f"Unknown method type: {cfg.method.type}")
@@ -64,13 +68,20 @@ def initialize_dataset_model(cfg: DictConfig, device: torch.device):
     logger.info(
         f"Initializing val {cfg.dataset.set_cls._target_}. (Using {(100 * cfg.dataset.subset):.0f}%)"
     )
-    val_dataset = instantiate(cfg.dataset.set_cls, mode="val", n_episodes=100)
+    val_dataset = instantiate(
+        cfg.dataset.set_cls, mode="val", n_episodes=100, root=os.path.join(root, "data")
+    )
     # Instantiate test dataset (few-shot) to test if we have enough classes in it
     # with at least (n_support + n_query) examples to form n_way
     logger.info(
         f"Initializing test {cfg.dataset.set_cls._target_}. (Using {(100 * cfg.dataset.subset):.0f}%)"
     )
-    test_dataset = instantiate(cfg.dataset.set_cls, n_episodes=100, mode="test")
+    test_dataset = instantiate(
+        cfg.dataset.set_cls,
+        n_episodes=100,
+        mode="test",
+        root=os.path.join(root, "data"),
+    )
 
     # Initialise SOT (if specified)
     sot = None

@@ -1,3 +1,4 @@
+from omegaconf import OmegaConf
 from wandb.apis.public import Run, Api
 import os
 import hydra
@@ -5,10 +6,17 @@ import pandas as pd
 import numpy as np
 import torch
 import torch.nn as nn
+import seaborn as sns
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.decomposition import PCA
+from sklearn.metrics import confusion_matrix
+
+import sys
+
+sys.path.append("..")
+import utils.train_utils as train_utils  # noqa: E402
 
 
 def extract_runid(run: Run) -> str:
@@ -24,6 +32,22 @@ def extract_runid(run: Run) -> str:
     return run.id
 
 
+def extract_info(run: Run) -> dict:
+    """
+    Extracts the relevant info from a W&B run.
+
+    Args:
+        run (Run): W&B run object
+    """
+    info = {
+        "id": run.id,
+        "name": run.name,
+        "runtime": run.summary["_runtime"],
+    }
+
+    return info
+
+
 def extract_config(run: Run) -> dict:
     """
     Extracts the relevant configs that identify an experiment from a W&B run.
@@ -33,7 +57,6 @@ def extract_config(run: Run) -> dict:
     """
     config = run.config
 
-    run_id = run.id
     dataset = config["dataset"]["name"]
     method = config["method"]["name"]
     use_sot = config["use_sot"]
@@ -41,7 +64,6 @@ def extract_config(run: Run) -> dict:
     n_shot = config["n_shot"]
 
     return {
-        "run_id": run_id,
         "dataset": dataset,
         "method": method,
         "use_sot": use_sot,
@@ -73,16 +95,23 @@ def load_to_df(runs: list[Run]) -> pd.DataFrame:
     Returns:
         df (pd.DataFrame): DataFrame containing all runs
     """
+    info = [extract_info(run) for run in runs]
     configs = [extract_config(run) for run in runs]
     metrics = [extract_metrics(run) for run in runs]
 
     # Creating joint DataFrame
-    df = pd.DataFrame(configs).join(pd.DataFrame(metrics)).set_index("run_id")
+    df = (
+        pd.DataFrame(info)
+        .join(pd.DataFrame(configs))
+        .join(pd.DataFrame(metrics))
+        .set_index("id")
+    )
 
     # Creating Multi-Column Index
-    config_columns = [("config", col) for col in configs[0].keys() if col != "run_id"]
+    info_columns = [("info", col) for col in info[0].keys() if col != "id"]
+    config_columns = [("config", col) for col in configs[0].keys()]
     eval_columns = [("eval", col) for col in metrics[0].keys()]
-    column_tuples = config_columns + eval_columns
+    column_tuples = info_columns + config_columns + eval_columns
     df.columns = pd.MultiIndex.from_tuples(column_tuples)
 
     return df
@@ -204,6 +233,38 @@ def init_run(
     return dataset, loader, model
 
 
+def init_all(
+    run, root_dir: str = "../"
+) -> tuple[
+    torch.utils.data.DataLoader,
+    torch.utils.data.DataLoader,
+    torch.utils.data.DataLoader,
+    torch.nn.Module,
+]:
+    """
+    Initialize run by initializing dataloader and model.
+
+    Args:
+        run (wandb.Run): W&B run
+        data_mode (str): Split to use
+
+    Returns:
+        dataset (torch.utils.data.Dataset): Dataset for given split
+        loader (torch.utils.data.DataLoader): Dataloader for given split
+        model (torch.nn.Module): Model initialized with given config
+    """
+    run_config = OmegaConf.create(run.config)
+    train_data, val_data, test_data, model = train_utils.initialize_dataset_model(
+        run_config, device="cpu", root=root_dir
+    )
+
+    train_loader = train_data.get_data_loader(**run.config["dataset"]["loader"])
+    eval_loader = val_data.get_data_loader(**run.config["dataset"]["loader"])
+    test_loader = test_data.get_data_loader(**run.config["dataset"]["loader"])
+
+    return train_loader, eval_loader, test_loader, model
+
+
 def eval_run(
     model: torch.nn.Module, test_loader: torch.utils.data.DataLoader
 ) -> list[tuple[np.ndarray, np.ndarray]]:
@@ -248,7 +309,6 @@ def eval_run(
 def visualise_episode(
     loader: torch.utils.data.DataLoader,
     model: nn.Module | None = None,
-    show: str = "input",
     ax: plt.Axes | None = None,
 ):
     """
@@ -261,91 +321,143 @@ def visualise_episode(
         ax (plt.Axes): Axes to use for plotting
     """
 
-    if not ax:
-        _, axs = plt.subplots(figsize=(5, 5))
-
     # Initialise transformers
     scaler = StandardScaler()
     pca = PCA(n_components=2)
     encoder = LabelEncoder()
 
-    # Get the episode parameters
-    n_way = loader.dataset.n_way
-    n_support = loader.dataset.n_support
-    n_query = loader.dataset.n_query
-    feat_dim = loader.dataset.dim
-
     # Get the episode data
     x, y = next(iter(loader))
 
-    if show == "backbone" or show == "lstm":
-        xs, xq = model.parse_feature(x, is_feature=False)
-        x = torch.cat([xs, xq], dim=1).detach().numpy()
-        feat_dim = x.shape[-1]
-    if show == "lstm":
-        xs = model.reencode(xs)
-        xs = xs.view(n_way, n_support, -1)
-        x = torch.cat([xs, xq], dim=1).detach().numpy()
+    # Get the embeddings
+    outputs = model.set_forward(x, return_intermediates=True)
+    c, t = model.correct(x)
+    del outputs["scores"]
 
-    # Flatten
-    xf = x.reshape(-1, feat_dim)
-    yf = y.reshape(-1)
+    # Get the episode parameters
+    n_way = model.n_way
+    n_support = model.n_support
+    n_query = model.n_query
 
-    # PCA transform features and integer-encode labels
-    x = pca.fit_transform(scaler.fit_transform(xf))
-    y = encoder.fit_transform(yf)
+    fig, axs = plt.subplots(ncols=len(outputs), figsize=(5 * len(outputs), 5))
+    fig.suptitle(f"Few-shot Accuracy: {100*(c / t):.2f}")
 
-    # Reshape back
-    x = x.reshape(n_way, n_support + n_query, -1)
-    y = y.reshape(n_way, n_support + n_query)
+    for ax, (layer, x) in zip(axs, outputs.items()):
+        xf = model.reshape2feature(x).detach().numpy()
+        yf = model.reshape2feature(y).detach().numpy()
 
-    # Split into support and query sets
-    xs, xq = x[:, :n_support], x[:, n_support:]
-    ys, yq = y[:, :n_support], y[:, n_support:]
+        # PCA transform features and integer-encode labels
+        xt = pca.fit_transform(scaler.fit_transform(xf))
+        yt = encoder.fit_transform(yf)
 
-    # Compute prototype
-    proto = xs.mean(1)
-    proto_c = ys[:, 0]
+        # To tensor
+        x, y = torch.Tensor(xt), torch.Tensor(yt)
 
-    # Re-flatten
-    xs, ys = xs.reshape(-1, 2), ys.reshape(-1)
-    xq, yq = xq.reshape(-1, 2), yq.reshape(-1)
+        # Reshape to set
+        x = model.reshape2set(x)
+        y = model.reshape2set(y)
 
-    # Plot the data
-    ax.scatter(
-        proto[:, 0],
-        proto[:, 1],
-        c=proto_c,
-        cmap="brg",
-        s=200,
-        marker="*",
-        label="Prototype",
-    )
-    ax.scatter(
-        xs[:, 0],
-        xs[:, 1],
-        c=ys,
-        cmap="brg",
-        s=100,
-        alpha=0.05,
-        marker="*",
-        label="Support",
-    )
-    ax.scatter(
-        xq[:, 0],
-        xq[:, 1],
-        c=yq,
-        cmap="brg",
-        s=100,
-        alpha=0.75,
-        marker="o",
-        label="Query",
-    )
+        # Split into support and query sets
+        xs, xq = model.parse_feature(x)
+        ys, yq = model.parse_feature(y)
 
+        xs = xs.reshape(n_way, n_support, -1)
+        xq = xq.reshape(n_way, n_query, -1)
+
+        # Compute prototype
+        proto = xs.mean(1)
+        proto_c = y[:, 0]
+
+        # Re-flatten
+        xs, ys = xs.reshape(-1, 2), ys.reshape(-1)
+        xq, yq = xq.reshape(-1, 2), yq.reshape(-1)
+
+        # Plot the data
+        ax.scatter(
+            proto[:, 0],
+            proto[:, 1],
+            c=proto_c,
+            cmap="brg",
+            s=200,
+            alpha=0.75,
+            marker="*",
+            label="Prototype",
+        )
+        ax.scatter(
+            xs[:, 0],
+            xs[:, 1],
+            c=ys,
+            cmap="brg",
+            s=100,
+            alpha=0.05,
+            marker="*",
+            label="Support",
+        )
+        ax.scatter(
+            xq[:, 0],
+            xq[:, 1],
+            c=yq,
+            cmap="brg",
+            s=100,
+            alpha=0.5,
+            marker="o",
+            label="Query",
+        )
+
+        ax.set_title(layer)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+
+
+def visualise_transport_plan(
+    loader: torch.utils.data.DataLoader, model: nn.Module, ax: plt.Axes | None = None
+):
+    if not ax:
+        _, ax = plt.subplots(figsize=(10, 10))
+
+    # Get few-shot episode
+    x, _ = next(iter(loader))
+
+    # Get the model output (including the transport plan)
+    outputs = model.set_forward(x, return_intermediates=True)
+    sot_mat = model.reshape2feature(outputs["sot"]).detach().numpy()
+
+    # Compute loss and accuracy
+    num_correct, num_total = model.correct(x)
+    acc = num_correct / num_total
+    loss = model.set_forward_loss(x)
+
+    # mean_row_sum = np.sum(sot_mat, axis=1).mean()
+    # mean_col_sum = np.sum(sot_mat, axis=0).mean()
+    sns.heatmap(sot_mat, ax=ax)
+    ax.set_title(f"SOT Embeddings (Acc. {100*acc:.2f}%, Loss {loss:.8f})")
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.set_xticklabels([])
-    ax.set_yticklabels([])
+
+
+def visualise_confusion_matrix(loader, model, ax=None):
+    if not ax:
+        _, ax = plt.subplots(figsize=(10, 10))
+
+    # Get few-shot episode
+    x, _ = next(iter(loader))
+
+    # Get the model output
+    outputs = model.set_forward(x)
+    logits = outputs["scores"].detach().numpy()
+    preds = logits.argmax(axis=1)
+    y = model.get_episode_labels(model.n_query).detach().numpy()
+
+    acc = (y == preds).mean()
+
+    conf_matrix = confusion_matrix(y, preds)
+
+    sns.heatmap(conf_matrix, annot=True, ax=ax)
+    ax.set_title(f"Confusion Matrix (Acc. {100*acc:.2f}%)")
+    ax.set_xticks([])
+    ax.set_yticks([])
 
 
 def compute_metrics(
