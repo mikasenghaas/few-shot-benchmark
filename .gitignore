@@ -7,11 +7,7 @@
 mika.*
 
 # TeX
-/report/**
-!/report/*.tex
-!/report/*.sty
-!/report/*.bst
-!/report/*.bib
+/report/build
 
 
 # Byte-compiled / optimized / DLL files

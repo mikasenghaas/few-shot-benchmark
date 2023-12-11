@@ -1,0 +1,37 @@
+\section{Results}
+Table \ref{tab:tuned-benchmark} displays the results for the first part of our benchmark study. 
+We fine-tuned each method on the given dataset and then evaluated it across 600 episodes. 
+In the table, we present the mean accuracy, accompanied by a 95\% confidence interval across the episodes. 
+The \texttt{Diff} column indicates the change in mean accuracy when we introduce the \texttt{SOT} module to the method.
+
+First, we can see that for already all methods without \texttt{SOT} reach average accuracy 87 \% 
+for \texttt{TM} dataset and 66 \% for \texttt{SP} dataset, which is a very solid baseline performance. 
+
+
+Initially, we observe that the presence of the \texttt{SOT} module enhances all methods except for the Baseline. 
+However, for \texttt{B++}, the performance improvement is only marginal. Conversely, for the remaining three methods, 
+\texttt{SOT} improved the performance for the \texttt{TM} dataset by an average of 12\% and by 48\% for the \texttt{SP} dataset. 
+Therefore, for both datasets, we see a large effect size after integration of the \texttt{SOT} module.
+
+\begin{table}[!ht]
+\caption{Results of the benchmark experiment.}
+\label{tab:tuned-benchmark}
+\centering
+\begin{tabular}{llllr}
+\toprule
+ &  & Acc & Acc w/ SOT & Diff (\%) \\
+\midrule
+\multirow[c]{5}{*}{Tabula Muris} & B & 90.73 ± 0.69 & 86.34 ± 0.85 & -4.84 \\
+ & B++ & 81.88 ± 0.88 & 82.76 ± 0.93 & \bfseries 1.07 \\
+ & MAML & 92.84 ± 0.55 & 99.21 ± 0.14 & \bfseries 6.86 \\
+ & MT & 84.57 ± 0.80 & 99.71 ± 0.09 & \bfseries 17.90 \\
+ & PT & 87.10 ± 0.81 & 98.62 ± 0.21 & \bfseries 13.23 \\
+\midrule
+\multirow[c]{5}{*}{SwissProt} & B & 69.18 ± 0.72 & 55.65 ± 0.76 & -19.55 \\
+ & B++ & 64.12 ± 0.69 & 64.61 ± 0.72 & \bfseries 0.77 \\
+ & MAML & 68.65 ± 0.71 & 98.03 ± 0.22 & \bfseries 42.79 \\
+ & MT & 68.16 ± 0.76 & 99.83 ± 0.07 & \bfseries 46.46 \\
+ & PT & 63.54 ± 0.73 & 99.29 ± 0.14 & \bfseries 56.26 \\
+\bottomrule
+\end{tabular}
+\end{table}

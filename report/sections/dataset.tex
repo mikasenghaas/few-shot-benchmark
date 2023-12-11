@@ -1,0 +1,70 @@
+\section{Dataset}
+
+% Introduce datasets
+This project utilises two biomedical datasets adapted for few-shot learning. Table~\ref{tab:data} details relevant statistics about the meta-splits for both datasets, including information about the number of samples, targets and potential overlap.
+
+% TODO: (Optional) Statistics about splits for both datasets (#samples, #targets, dimensionality)
+% TODO: (Optional) Figure about difficulty of the task by showing PCA features of samples within k episodes (visually explore the class separation)
+
+% Tabula Muris
+\subsection{Tabula Muris}
+
+% TODO: Find out total number of samples/ targets
+% TODO: Mention pre-processing (filtering cells/ genes, log-transform, zero imputation)
+% TODO: Discuss the overlap a bit more
+% TODO: Figure out the other pre-processing steps (filter cells with <5000 counts? normalise per cell?)
+
+The first dataset, Tabula Muris~\cite{tabula2018} (\texttt{TM}), comprises over 100,000 mouse cells' gene expression data and annotations about the cell ontology class (cell type). The task is to predict the cell type based on the gene expression data. To address the sparsity and skewed distribution of raw gene expressions, preprocessing included gene filtering, cell filtering, log-transformation, capping at 10, and mean normalization, with zero imputation for non-zero entries. Post-processing, the dataset features 105,960 cells across 125 cell types.
+
+For the few-shot learning task, the focus is on generalisation across different tissues. The dataset is divided into meta-training, meta-validation, and meta-testing sets, each representing distinct tissue types: 15 for training and four each for validation and testing. Despite some overlap in cell types across tissues this structure ensures diverse tissue representation and makes the task of predicting the cell type in novel tissues challenging.
+
+% #Samples (after pre-processing)
+% Train: 65846 (0,6214231786)
+% Val: 15031 (0,1418554171)
+% Test: 25083 (0,2367214043)
+% Total: 105.960 
+
+% #Targets
+% Train: 59
+% Val: 47
+% Test: 37
+% Total: 125
+
+\subsection{SwissProt}
+
+% TODO: Get more clarity on gene ontology (GO) annotations
+% TODO: Possibly give some examples of protein functions for clarity
+The second dataset, Swissprot~\cite{uniprot2019} (denoted as \texttt{SP}), is an extensively annotated protein sequence database featuring 14,251 sequences, enriched with comprehensive information on their functions, structures, and biological roles. The project utilises pre-computed embeddings of these protein sequences to predict protein functions. The dataset encompasses 884 unique annotated protein functions. To facilitate a few-shot learning environment, the dataset is divided into meta-training, meta-validation, and meta-testing splits, with each split comprising protein sequences with distinct functions.
+
+% #Samples
+% Train: 12141 (0,8519402147) 
+% Val: 1407 (0,0987299137)
+% Test: 703 (0,0493298716)
+% Total: 14.251
+
+% #Targets
+% Train: 636
+% Val: 159
+% Test: 89
+% Total: 884
+
+\begin{table}[h]
+    \centering
+    \caption{Dataset Statistics}
+    \label{tab:data}
+    \begin{tabular}{lllll}
+        \toprule
+        & \textbf{Split} & \textbf{\#Samples} (\%) & \textbf{\#Targets} & \textbf{Overlap} \\
+        \midrule
+        \multirow{3}{*}{\texttt{TM}} 
+        & Train. & 65,846 (62\%) & 59 & N/A \\
+        & Val. & 15,031 (14\%) & 47 & 10 \\
+        & Test. & 25,083 (24\%) & 37 & 4 \\
+        \\
+        \multirow{3}{*}{\texttt{SP}} 
+        & Train. & 12,141 (85\%) & 636 & N/A \\
+        & Val. & 1,407 (10\%) & 159 & 0 \\
+        & Test. & 703 (5\%) & 89 & 0 \\
+        \bottomrule
+    \end{tabular}
+\end{table}

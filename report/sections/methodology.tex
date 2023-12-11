@@ -1,0 +1,15 @@
+\section{Methodology}
+
+\subsection{Experimental setup}
+In our setup, we use the same backbone for all methods. The backbone is a fully connected feed forward neural network with batch normalization
+layer, ReLU activation and dropout. For the \texttt{TM} dataset, the backbone two hidden layers each with 64 neurons. For the \texttt{SP} dataset,
+the backbone also has two hidden layers, but with 512 neurons each. 
+
+For each experiment, we train the model for a maximum of 40 epochs. We use early stopping with a patience of 5 epochs. In addition, we use 5 query samples per class for each episode across all experiments, and evaluate on fixed number of epochs (600) to reduce variance.  Each experiment is defined by five parameters: \texttt{method}, \texttt{dataset}, \texttt{way}, \texttt{shot} and \texttt{use sot}.
+
+In the first batch of experiments, we fix \texttt{way} and \texttt{shot} to 5 and vary the remaining three parameters. Thus, in total we have 20 experiments. 
+This way, we should be able to answer the impact of \texttt{method}, \texttt{dataset} and \texttt{use sot} on the performance of meta-learning based methods.
+Through the second batch of experiments, we aim to answer impact of \texttt{way} and \texttt{shot} on the performance of meta-learning based methods.
+We therefore fix \texttt{method} to be \texttt{ProtoNet} and \texttt{dataset} to \texttt{TM}. Then we vary binary flag \texttt{use sot}, \texttt{way} to be 2, 4, 6, 8, 10, and \texttt{shot} to be 1, 5, 10, 15 and 20, in total we have therefore 50 experiments.
+
+% TODO: we need to mention along which dimensions we have finetuned each of the methods including SOT!
