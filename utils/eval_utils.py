@@ -85,6 +85,31 @@ def extract_metrics(run: Run) -> dict:
     return {k: v for k, v in run.summary.items() if not k.startswith("_")}
 
 
+def extract_hyperparams(run: Run) -> dict:
+    """
+    Extracts the relevant hyperparameters from a W&B run.
+
+    Args:
+        run (Run): W&B run object
+
+    Returns:
+        hyperparams (dict): Dictionary of hyperparameters
+    """
+    config = run.config
+
+    lr = config["train"]["lr"]
+    sot_reg = config["sot"]["cls"]["ot_reg"]
+    sot_sinkhorn_iter = config["sot"]["cls"]["sinkhorn_iterations"]
+    sot_dist_metric = config["sot"]["cls"]["distance_metric"]
+
+    return {
+        "lr": lr,
+        "sot_reg": sot_reg,
+        "sot_sinkhorn_iter": sot_sinkhorn_iter,
+        "sot_dist_metric": sot_dist_metric,
+    }
+
+
 def load_to_df(runs: list[Run]) -> pd.DataFrame:
     """
     Loads all runs into a pandas DataFrame.
@@ -98,12 +123,14 @@ def load_to_df(runs: list[Run]) -> pd.DataFrame:
     info = [extract_info(run) for run in runs]
     configs = [extract_config(run) for run in runs]
     metrics = [extract_metrics(run) for run in runs]
+    hyperparams = [extract_hyperparams(run) for run in runs]
 
     # Creating joint DataFrame
     df = (
         pd.DataFrame(info)
         .join(pd.DataFrame(configs))
         .join(pd.DataFrame(metrics))
+        .join(pd.DataFrame(hyperparams))
         .set_index("id")
     )
 
@@ -111,7 +138,8 @@ def load_to_df(runs: list[Run]) -> pd.DataFrame:
     info_columns = [("info", col) for col in info[0].keys() if col != "id"]
     config_columns = [("config", col) for col in configs[0].keys()]
     eval_columns = [("eval", col) for col in metrics[0].keys()]
-    column_tuples = info_columns + config_columns + eval_columns
+    hyperparam_columns = [("hyperparam", col) for col in hyperparams[0].keys()]
+    column_tuples = info_columns + config_columns + eval_columns + hyperparam_columns
     df.columns = pd.MultiIndex.from_tuples(column_tuples)
 
     return df
