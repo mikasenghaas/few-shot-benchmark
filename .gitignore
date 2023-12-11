@@ -6,6 +6,13 @@
 *.obo
 mika.*
 
+# TeX
+/report/**
+!/report/*.tex
+!/report/*.sty
+!/report/*.bst
+!/report/*.bib
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
