@@ -99,13 +99,11 @@ def extract_hyperparams(run: Run) -> dict:
 
     lr = config["train"]["lr"]
     sot_reg = config["sot"]["cls"]["ot_reg"]
-    sot_sinkhorn_iter = config["sot"]["cls"]["sinkhorn_iterations"]
     sot_dist_metric = config["sot"]["cls"]["distance_metric"]
 
     return {
         "lr": lr,
         "sot_reg": sot_reg,
-        "sot_sinkhorn_iter": sot_sinkhorn_iter,
         "sot_dist_metric": sot_dist_metric,
     }
 
@@ -640,3 +638,130 @@ def exp2latex(df: pd.DataFrame) -> str:
         print("❌ Could not find the row to insert centering.")
 
     return latex
+
+
+def aggregate(df, param_tuples, metric="mean"):
+    df_agg = df.groupby(param_tuples).agg({("eval", "test/acc"): [metric]})
+    return df_agg
+
+
+names = {
+    "lr": "Learning Rate",
+    "sot_dist_metric": "SOT Distance Metric",
+    "method": "Method",
+    "use_sot": "SOT",
+    "sot_reg": "SOT Regularization",
+}
+
+rename = lambda x: names[x] if x in names else x
+
+
+def plot_heatmap_on_ax(
+        ax,
+        results,
+        param1_values,
+        param2_values,
+        cmap,
+        xlabels=False,
+        ylabels=False,
+        vmin=0,
+        vmax=1,
+):
+    cax = ax.matshow(results, cmap=cmap, vmin=vmin, vmax=vmax, aspect="auto")
+    ax.set_yticks(
+        np.arange(len(param1_values)), param1_values if ylabels else [], fontsize=22
+    )
+    ax.set_xticks(
+        np.arange(len(param2_values)),
+        param2_values if xlabels else [],
+        rotation="vertical",
+        fontsize=22,
+    )
+    ax.tick_params(
+        axis="both",
+        right=1,
+        left=0,
+        bottom=0,
+        top=1,
+        labelbottom=0,
+        labeltop=1,
+        labelleft=0,
+        labelright=1,
+    )
+    ax.grid(False)
+    return cax
+
+
+def calcualte_vs(df_runs, params, metric="mean", vmin=None, vmax=None):
+    if vmin != None and vmax != None:
+        return vmin, vmax
+
+    values = []
+    for param1 in params:
+        for param2 in params:
+            if param1 == param2:
+                continue
+            df_agg = aggregate(df_runs, [param1, param2], metric)[
+                ("eval", "test/acc", metric)
+            ].unstack()
+            values.extend(df_agg.values.flatten())
+
+    vmin = min(values) if vmin is None else vmin
+    vmax = max(values) if vmax is None else vmax
+    return vmin, vmax
+
+
+# grid of (n-1 x n-1) plots, n is number of hyperparameters, each plot is a heatmap of mean test acc for different hyperparameter value combinations
+def grid(df_runs, params, metric="mean", cmap="YlGn", vmin=None, vmax=None):
+    n = len(params)
+    fig, axs = plt.subplots(nrows=n - 1, ncols=n - 1, figsize=(20, 20))
+    fig.tight_layout(pad=3.0)
+
+    vmin, vmax = calcualte_vs(df_runs, params, metric, vmin=vmin, vmax=vmax)
+    for i in range(n - 1):
+        for j in range(1, i + 1):
+            axs[i][j - 1].axis("off")
+        for j in range(i + 1, n):
+            param1 = params[i]
+            param2 = params[j]
+            ax = axs[i, j - 1]
+            df_agg = aggregate(df_runs, [param1, param2], metric)[
+                ("eval", "test/acc", metric)
+            ].unstack()
+            cax = plot_heatmap_on_ax(
+                axs[i][j - 1],
+                df_agg,
+                df_agg.index,
+                df_agg.columns,
+                cmap,
+                i == 0,
+                j == n - 1,
+                vmin=vmin,
+                vmax=vmax,
+                )
+
+            # print labels
+            if i == j - 1:
+                # position lable on top
+                axs[i][j - 1].set_xlabel(
+                    rename(param2[1]), fontsize=22, fontweight="bold"
+                )
+                axs[i][j - 1].set_ylabel(
+                    rename(param1[1]), fontsize=22, fontweight="bold"
+                )
+
+    fig.subplots_adjust(wspace=0.02, hspace=0.02)
+
+    for ax in axs.flat:
+        ax.set_anchor("NE")
+
+    # colorbar anchor to the left
+    ticks = np.linspace(vmin, vmax, 5)
+    cb = fig.colorbar(
+        cax, ax=axs[-1, 0:2], orientation="horizontal", aspect=15, ticks=ticks
+    )
+    # # legend with red dot and best hyperparameters
+    # cb.ax.legend([plt.scatter([], [], marker='o', color='red')], ['best hyperparameters'], loc='lower center', ncol=2,
+    #              fontsize=16, frameon=False, bbox_to_anchor=(0.5, 1))
+    # colorbar ticks
+    cb.ax.set_xticklabels([f"{tick:.2f}" for tick in ticks], fontsize=22)
