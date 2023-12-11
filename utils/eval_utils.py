@@ -515,6 +515,10 @@ def exp2results(df: pd.DataFrame) -> pd.DataFrame:
     sot_test_acc = df[df[("config", "use_sot")]][("eval", "test/acc")].values
     test_acc = df[~df[("config", "use_sot")]][("eval", "test/acc")].values
 
+    # Get the confidence intervals
+    sot_test_acc_ci = df[df[("config", "use_sot")]][("eval", "test/acc_ci")].values
+    test_acc_ci = df[~df[("config", "use_sot")]][("eval", "test/acc_ci")].values
+
     # Get the methods name and remap them to the styled names
     remmaping = {
         "baseline": "B",
@@ -526,12 +530,11 @@ def exp2results(df: pd.DataFrame) -> pd.DataFrame:
     methods = sorted(df[("config", "method")].unique())
     methods = [remmaping[method] for method in methods]
 
-    # Create a dataframe with the results
     df_results = pd.DataFrame(
         {
             "Method": methods,
-            "Acc": test_acc,
-            "Acc w/ SOT": sot_test_acc,
+            "Acc": [f"{acc:.2f} ± {ci:.2f}" for acc, ci in zip(test_acc, test_acc_ci)],
+            "Acc w/ SOT": [f"{acc:.2f} ± {ci:.2f}" for acc, ci in zip(sot_test_acc, sot_test_acc_ci)],
             "Diff": (sot_test_acc - test_acc) / test_acc * 100,
         }
     )
@@ -563,7 +566,7 @@ def exp2latex(df: pd.DataFrame) -> str:
         position="h",
         hrules=True,
         clines=None,
-        label="tab:results",
+        label="tab:tuned-benchmark",
         caption="Results of the benchmark experiment.",
         sparse_index=True,
         multirow_align="c",
