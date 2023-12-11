@@ -1,4 +1,7 @@
 \section{Results}
+
+% -------- Part 1: Benchmark
+\input{tables/tuned-benchmark.tex}
 Table \ref{tab:tuned-benchmark} displays the results of the first part of 
 our benchmark study. We fine-tuned hyper-parameters of each method on the given dataset and 
 then evaluated it across 600 episodes. The table presents the mean accuracy,
@@ -15,4 +18,25 @@ In contrast, for the remaining three methods, \texttt{SOT} improved the performa
 by an average of 12\% and by 48\% for the \texttt{SP} dataset. 
 Therefore, for both datasets, we observe a substantial effect size after the integration of the \texttt{SOT} module.
 
-\input{tables/tuned-benchmark.tex}
+% -------- Part 2: way-shot
+\begin{figure}
+    \centering
+    \includegraphics[width=1\columnwidth]{../figures/way-shot.pdf}
+    \caption{Accuracy of the Tabula Muris dataset for different ways and shots.}
+    \label{fig:way-shot}
+\end{figure}
+
+
+Figure \ref{fig:way-shot} shows the relationship between the number of ways and shots
+and the accuracy of the \texttt{ProtoNet} method on \texttt{TM} dataset. 
+As we would expect, without the \texttt{SOT} module, the accuracy decreases with the number of ways and 
+increases with the number of shots. However, with the \texttt{SOT} module, the accuracy remains 
+stable across different ways and shots. 
+
+% -------- Part 3: SOT integration into the matching net
+\begin{figure}
+    \centering
+    \includegraphics[width=1\columnwidth]{../figures/sot-interaction-scatter.pdf}
+    \caption{Performance of different configurations of MatchingNet with and without SOT on the Tabula Muris dataset.}
+    \label{fig:sot-interaction-scatter}
+\end{figure}
