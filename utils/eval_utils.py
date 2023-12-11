@@ -561,8 +561,8 @@ def exp2results(df: pd.DataFrame) -> pd.DataFrame:
     df_results = pd.DataFrame(
         {
             "Method": methods,
-            "Acc": [f"{acc:.2f} ± {ci:.2f}" for acc, ci in zip(test_acc, test_acc_ci)],
-            "Acc w/ SOT": [f"{acc:.2f} ± {ci:.2f}" for acc, ci in zip(sot_test_acc, sot_test_acc_ci)],
+            "Acc": [f"${acc:.1f} \pm {ci:.1f}$" for acc, ci in zip(test_acc, test_acc_ci)],
+            "w/ SOT": [f"${acc:.1f} \pm {ci:.1f}$" for acc, ci in zip(sot_test_acc, sot_test_acc_ci)],
             "Diff": (sot_test_acc - test_acc) / test_acc * 100,
         }
     )
@@ -585,7 +585,7 @@ def exp2latex(df: pd.DataFrame) -> str:
     """
 
     # Style the results
-    df_styled = df.style.format(precision=2).map(
+    df_styled = df.style.format(precision=1).map(
         lambda x: "font-weight: bold" if x > 0 else "", subset=["Diff"]
     )
 
@@ -602,7 +602,7 @@ def exp2latex(df: pd.DataFrame) -> str:
     )
 
     # Add Midrule between dataset tables
-    search_term = r"\multirow[c]{5}{*}{SwissProt}"
+    search_term = r"\multirow[c]{5}{*}{SP}"
     index_to_insert_midrule = latex.find(search_term)
     if index_to_insert_midrule != -1:
         latex = (
