@@ -1,15 +1,31 @@
-\section{Methodology}
+\section{Experiments}
 
-\subsection{Experimental setup}
-In our setup, we use the same backbone for all methods. The backbone is a fully connected feed forward neural network with batch normalization
-layer, ReLU activation and dropout. For the \texttt{TM} dataset, the backbone two hidden layers each with 64 neurons. For the \texttt{SP} dataset,
-the backbone also has two hidden layers, but with 512 neurons each. 
+An experiment in our study is defined as a combination of a few-shot learning \textit{method}, optionally including the \textit{SOT} feature transform, trained and evaluated on a \textit{dataset} within a specified few-shot learning setting. This setting is characterized by the number of classes (\textit{n-way}) and the number of samples per class (\textit{n-shot}).
 
-For each experiment, we train the model for a maximum of 40 epochs. We use early stopping with a patience of 5 epochs. In addition, we use 5 query samples per class for each episode across all experiments, and evaluate on fixed number of epochs (600) to reduce variance.  Each experiment is defined by five parameters: \texttt{method}, \texttt{dataset}, \texttt{way}, \texttt{shot} and \texttt{use sot}.
+Due to the impracticality of exhaustive hyperparameter grid searching across all experimental configurations, we have structured our experiments into three distinct groups. Each group fixes certain parameters, allowing us to focus on the impact of the variables of interest.
 
-In the first batch of experiments, we fix \texttt{way} and \texttt{shot} to 5 and vary the remaining three parameters. Thus, in total we have 20 experiments. 
-This way, we should be able to answer the impact of \texttt{method}, \texttt{dataset} and \texttt{use sot} on the performance of meta-learning based methods.
-Through the second batch of experiments, we aim to answer impact of \texttt{way} and \texttt{shot} on the performance of meta-learning based methods.
-We therefore fix \texttt{method} to be \texttt{ProtoNet} and \texttt{dataset} to \texttt{TM}. Then we vary binary flag \texttt{use sot}, \texttt{way} to be 2, 4, 6, 8, 10, and \texttt{shot} to be 1, 5, 10, 15 and 20, in total we have therefore 50 experiments.
+% Backbone
+All experiments employ a fully-connected feed-forward neural network with batch normalization, ReLU activation, and dropout. The network has two hidden layers, with neuron counts tailored to the datasets: 64 for the TM dataset and 512 for the SP dataset.
 
-% TODO: we need to mention along which dimensions we have finetuned each of the methods including SOT!
+% Model training
+Training of the models is conducted for a maximum of 40 epochs, employing the Adam optimizer with varying learning rates. We implement early stopping after five epochs of no improvement in validation accuracy. This strategy not only prevents overfitting but also optimizes training time. The model demonstrating the best performance on the validation set is then chosen for the final evaluation.
+
+% Hyperparameter tuning
+For a comprehensive understanding, hyperparameters are meticulously tuned, unless specified otherwise. This tuning includes the learning rate ($\lambda = \{0.001, 0.0005\}$) and parameters specific to the SOT feature module, namely the regularization parameter ($\gamma = \{0.1, 1.0\}$) and the choice between cosine and euclidean distance metrics.
+
+% TODO: Here, we should probably argue for the selection and ranges of our hyper-parameters :(
+
+% Evaluation
+Model performance is evaluated using the mean, standard deviation, and 95\% confidence interval of the few-shot accuracy, calculated over 600 episodes. Consistency is maintained across all experiments, with each episode utilizing five query samples per class.
+
+\subsection{Experiment 1: General Benchmark}
+
+This batch evaluates models, with and without SOT feature transform, on both datasets in a 5-way-5-shot setting, comprising 20 experiments. The aim is to analyse the influence of the method, dataset, and SOT module on few-shot learning performance.
+
+\subsection{Experiment 2: Way-Shot Analysis}
+
+In the second batch, our focus narrows to Prototypical Networks, both with and without the SOT feature transform, applied to the Tabula Muris dataset in various few-shot learning scenarios. Exploring combinations of n-way ({2, 4, 6, 8, 10}) and n-shot ({1, 5, 10, 15, 20}), this batch totals 50 experiments. The objective is to examine the SOT feature transform's behavior across different few-shot learning settings.
+
+\subsection{Experiment 3: SOT Interaction} 
+
+The final batch investigates the interaction between the SOT feature transform and the embedding components of Matching Networks, considering both support and query samples. This includes training eight variations of matching networks, with and without all combinations of enabled embedding modules (SOT, LSTM for support samples, Contextual LSTM for query samples) on the Tabula Muris dataset in a 5-way-5-shot setting. The aim is to explore how the SOT feature transform integrates with embedding components in metric-based meta-learning methods.
