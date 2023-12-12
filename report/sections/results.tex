@@ -1,9 +1,10 @@
 \section{Results}
 
 
-\textbf{General Benchmark.} Table \ref{tab:tuned-benchmark} shows the experiment results. Without the SOT module, models average 87\% accuracy on the \texttt{TM} dataset and 66\% on the \texttt{SP} dataset, demonstrating their ability to learn from limited samples. \texttt{MAML} and \texttt{B} are the top performers across datasets, whereas \texttt{B++} performs worst out of all methods.
+\textbf{General Benchmark.} Table \ref{tab:tuned-benchmark} shows the experiment results. Without the SOT module, models average 87\% accuracy on the \texttt{TM} dataset and 66\% on the \texttt{SP} dataset, demonstrating their ability to learn from limited samples. 
+\texttt{MAML} and \texttt{B} are the top performers across datasets, whereas \texttt{B++} performs worst out of all methods.
 
-With the SOT module the average accuracy on both datasets increases to 93\% on \texttt{TM} and 83\% on \texttt{SP}. This enhancement, however, is not uniform. Meta-learners significantly benefit, with their performance jumping to 99\% accuracy, showing an average increase of 12 percentage points on \texttt{TM} and 48 percentage points on \texttt{SP}. In contrast, non-meta-learners do not gain from the SOT module, with \texttt{B}'s performance declining and \texttt{B++}'s remaining static.
+% With the SOT module the average accuracy on both datasets increases to 93\% on \texttt{TM} and 83\% on \texttt{SP}. This enhancement, however, is not uniform. Meta-learners significantly benefit, with their performance jumping to 99\% accuracy, showing an average increase of 12 percentage points on \texttt{TM} and 48 percentage points on \texttt{SP}. In contrast, non-meta-learners do not gain from the SOT module, with \texttt{B}'s performance declining and \texttt{B++}'s remaining static.
 
 
 \input{tables/tuned-benchmark.tex}
@@ -13,25 +14,18 @@ With the SOT module the average accuracy on both datasets increases to 93\% on \
 % }
 
 
-\textbf{Way-Shot Analysis.} Figure \ref{fig:way-shot} presents the way-shot analysis results for \texttt{PN} on the \texttt{TM} dataset, with and without the SOT module. The left subplot shows test accuracy against the number of classes, and the right subplot against the number of samples per class.
+\textbf{Way-Shot Analysis.} Figure \ref{fig:way-shot} presents the way-shot analysis results for \texttt{PN} on the \texttt{TM} dataset, with and without the SOT module. 
+The left subplot shows test accuracy against the number of classes, and the right subplot against the number of samples per class.
 
-Without the SOT module, there's a predictable trend: accuracy decreases with more classes but increases with additional samples per class. However, this pattern changes with the SOT module. Here, accuracy remains stable regardless of the number of ways or shots. Remarkably, in challenging scenarios like 10-way-1-shot, the model sustains a high test accuracy of around 97\%.
+Without the SOT module, there's a predictable trend: accuracy decreases with more classes but increases with additional samples per class. 
+% However, this pattern changes with the SOT module. Here, accuracy remains stable regardless of the number of ways or shots. Remarkably, in challenging scenarios like 10-way-1-shot, 
+% the model sustains a high test accuracy of around 97\%.
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=1\columnwidth]{../figures/way-shot.pdf}
-    \caption{\textbf{Way-Shot Analysis.} Test accuracy of \texttt{PN} on the \texttt{TM} dataset with and without the SOT module in various few-shot learning settings for fixed n-way (left) and n-shot (right). Individual points represent a single experiment. We show the regression line with a 95\% confidence interval.}
+    \includegraphics[width=1\columnwidth]{figures/way-shot.pdf}
+    \caption{\textbf{Way-Shot Analysis.} Test accuracy of \texttt{PN} on the \texttt{TM} dataset with and without the SOT module in various 
+    few-shot learning settings for fixed n-way (left) and n-shot (right). Individual points represent a single experiment. We show the regression line with a 
+    95\% confidence interval.}
     \label{fig:way-shot}
-\end{figure}
-
-
-\textbf{SOT Interaction.} Figure~\ref{fig:sot-interaction-scatter} shows the interaction effects between the SOT module and the subsequent embedding modules (\texttt{SE} and \texttt{QE}) in \texttt{MN}, revealing notable patterns.
-
-Each component boosts performance on its own. The model's performance falls to 40\% without additional encoding of embeddings from the backbone. Introducing either \texttt{SE}, \texttt{QE} or SOT elevates performance to around 60\%, matching the \texttt{PN} model's performance without the SOT module. Most importantly, the significant performance jump seen in Experiment 1 occurs only when the SOT module is paired with at least one subsequent embedding module. This indicates a non-linear, critical interaction between the SOT module and the embedding modules, essential for the enhanced results observed in Experiment 1.
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.75\columnwidth]{../figures/sot-interaction-scatter.pdf}
-    \caption{\textbf{SOT Interaction Ablation.} Test accuracy of \texttt{MN} with and without the SOT module in various configurations on the \texttt{TM} dataset in the 5-way-5-shot setting. The inclusion of \texttt{SE}, \texttt{QE} and \texttt{SOT} are binary variables that are encoded on the axis and through colour. Test accuracy is encoded as the size of the marker.}
-    \label{fig:sot-interaction-scatter}
 \end{figure}

@@ -1,7 +1,10 @@
 \section{Methods}
 
 
-Few-shot learning algorithms can be classified into two main categories: \textit{Transfer learning} involves a two-phase process of pre-training on a large dataset to learn general data representation, followed by fine-tuning on the target task with limited data. \textit{Meta-learning}, conversely, leverages past experiences from a series of related tasks to efficiently tackle a new task with sparse data. These algorithms undergo meta-training, where the model encounters various tasks, mimicking the target few-shot learning scenario. Each task comprises randomly chosen support and query samples from identical class sets, training the model to adapt to support samples and classify query samples.
+Few-shot learning algorithms can be classified into two main categories: \textit{Transfer learning} involves a two-phase process of pre-training on a large dataset to learn general data representation, 
+followed by fine-tuning on the target task with limited data. \textit{Meta-learning}, conversely, leverages past experiences from a series of related tasks to efficiently tackle a new task with sparse data. 
+These algorithms undergo meta-training, where the model encounters various tasks, mimicking the target few-shot learning scenario. Each task comprises randomly chosen support and query samples from identical class sets, 
+training the model to adapt to support samples and classify query samples.
 
 In the following we describe the high-level idea of each method. For details on the methods please refer to the original papers.
 
@@ -24,11 +27,18 @@ Finally, \textbf{Model Agnostic Meta Learning}~\cite{maml} (\texttt{MAML}) is an
 
 % TODO: Mention problems with reduced dimensionality of SOT embeddings.
 
-The \textbf{Self-Optimal Transport} (SOT)~\cite{sot} feature transform is a parameterless and fully differentiable method for transforming feature vectors. SOT embeddings are notable for their interpretability, permutation equivariance, and, most importantly, potential to upgrade a set of features to facilitate downstream matching or grouping related tasks, as encountered frequently in few-shot learning settings.
+The \textbf{Self-Optimal Transport} (SOT)~\cite{sot} feature transform is a parameterless and fully differentiable method for transforming feature vectors. 
+SOT embeddings are notable for their interpretability, permutation equivariance, and, most importantly, potential to upgrade a set of features to facilitate 
+downstream matching or grouping related tasks, as encountered frequently in few-shot learning settings.
 
-SOT fundamentally utilises Optimal Transport (OT) on a square distance matrix (e.g. cosine similarity matrix) of input features, leading to embeddings that reflect the \textit{direct} similarity and \textit{third-party} agreement of samples to each other. Mathematically, SOT is a function \(T: \mathbb{R}^{n \times d} \rightarrow \mathbb{R}^{n \times n}\) that maps \(n\) samples in \(d\)-dimensions to a re-embedded SOT vector in \(n\)-dimensions. The SOT embeddings are computed from an iterative optimisation algorithm known as the Sinkhorn-Knopp algorithm~\cite{sinkhorn-knopp} that solves a regularised version of the OT problem.
+SOT fundamentally utilises Optimal Transport (OT) on a square distance matrix (e.g. cosine similarity matrix) of input features, 
+leading to embeddings that reflect the \textit{direct} similarity and \textit{third-party} agreement of samples to each other. 
+Mathematically, SOT is a function \(T: \mathbb{R}^{n \times d} \rightarrow \mathbb{R}^{n \times n}\) that maps \(n\) samples in \(d\)-dimensions to a 
+re-embedded SOT vector in \(n\)-dimensions. The SOT embeddings are computed from an iterative optimisation algorithm known as the Sinkhorn-Knopp 
+algorithm~\cite{sinkhorn-knopp} that solves a regularised version of the OT problem.
 
-In few-shot learning contexts, SOT helps align previously independently embedded support and query samples by jointly embedding them according to their similarities to each other - an example of \textit{transductivity}. The SOT feature transform is used in state-of-the-art methods in common few-shot learning benchmarks~\cite{sot}. Within our study we employ the SOT feature transform module on the embeddings obtained from the backbone network.
+In few-shot learning contexts, SOT helps align previously independently embedded support and query samples by jointly embedding them according to their similarities to each other - an example of \textit{transductivity}. 
+The SOT feature transform is used in state-of-the-art methods in common few-shot learning benchmarks~\cite{sot}. Within our study we employ the SOT feature transform module on the embeddings obtained from the backbone network.
 
 % For an input feature matrix \(X \in \mathbb{R}^{n \times d}\), SOT calculates the squared cosine pairwise distance matrix \(D = XX^T\). It then applies the Sinkhorn-Knopp algorithm to derive the optimal transport plan matrix \(W \in \mathbb{R}^{n \times n}\) for a modified distance matrix \(D_{\infty}\) which 
 % is the distance matrix \(D\) with a very large scalar \(\alpha\) replacing each of the entries on its diagonal. 
