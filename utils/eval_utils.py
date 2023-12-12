@@ -98,11 +98,13 @@ def extract_hyperparams(run: Run) -> dict:
     config = run.config
 
     lr = config["train"]["lr"]
+    # feat_dim = config["dataset"]["backbone"]["feat_dim"]
     sot_reg = config["sot"]["cls"]["ot_reg"]
     sot_dist_metric = config["sot"]["cls"]["distance_metric"]
 
     return {
         "lr": lr,
+        # "feat_dim": feat_dim,
         "sot_reg": sot_reg,
         "sot_dist_metric": sot_dist_metric,
     }
@@ -121,14 +123,14 @@ def load_to_df(runs: list[Run]) -> pd.DataFrame:
     info = [extract_info(run) for run in runs]
     configs = [extract_config(run) for run in runs]
     metrics = [extract_metrics(run) for run in runs]
-    hyperparams = [extract_hyperparams(run) for run in runs]
+    hparams = [extract_hyperparams(run) for run in runs]
 
     # Creating joint DataFrame
     df = (
         pd.DataFrame(info)
         .join(pd.DataFrame(configs))
         .join(pd.DataFrame(metrics))
-        .join(pd.DataFrame(hyperparams))
+        .join(pd.DataFrame(hparams))
         .set_index("id")
     )
 
@@ -136,8 +138,8 @@ def load_to_df(runs: list[Run]) -> pd.DataFrame:
     info_columns = [("info", col) for col in info[0].keys() if col != "id"]
     config_columns = [("config", col) for col in configs[0].keys()]
     eval_columns = [("eval", col) for col in metrics[0].keys()]
-    hyperparam_columns = [("hyperparam", col) for col in hyperparams[0].keys()]
-    column_tuples = info_columns + config_columns + eval_columns + hyperparam_columns
+    hparams_columns = [("hparams", col) for col in hparams[0].keys()]
+    column_tuples = info_columns + config_columns + eval_columns + hparams_columns
     df.columns = pd.MultiIndex.from_tuples(column_tuples)
 
     return df
@@ -437,9 +439,7 @@ def visualise_episode(
         ax.set_yticklabels([])
 
 
-def visualise_transport_plan(
-    x, model: nn.Module, ax: plt.Axes | None = None
-):
+def visualise_transport_plan(x, model: nn.Module, ax: plt.Axes | None = None):
     if not ax:
         _, ax = plt.subplots(figsize=(10, 10))
 
@@ -697,10 +697,12 @@ def aggregate(df, param_tuples, metric="mean"):
 
 names = {
     "lr": "Learning Rate",
+    "feat_dim": "Backbone Dimension",
     "sot_dist_metric": "SOT Distance Metric",
-    "method": "Method",
     "use_sot": "SOT",
     "sot_reg": "SOT Regularization",
+    "method": "Method",
+    "dataset": "Dataset",
 }
 
 rename = lambda x: names[x] if x in names else x
@@ -815,3 +817,21 @@ def grid(df_runs, params, metric="mean", cmap="YlGn", vmin=None, vmax=None):
     #              fontsize=16, frameon=False, bbox_to_anchor=(0.5, 1))
     # colorbar ticks
     cb.ax.set_xticklabels([f"{tick:.2f}" for tick in ticks], fontsize=22)
+
+
+def visualise_hparams(df, dataset=None, method=None, hparam="lr", ax=None):
+    if not ax:
+        _, ax = plt.subplots(figsize=(5, 5))
+    only_sot = df[("config", "use_sot")]
+    is_dataset = df[("config", "dataset")] == dataset if dataset else True
+    is_method = df[("config", "method")] == method if method else True
+    filtered_df = df[only_sot & is_dataset & is_method]
+
+    sns.barplot(
+        filtered_df,
+        x=("hparams", hparam),
+        y=("eval", "test/acc"),
+        ax=ax,
+    )
+    ax.set_xlabel(hparam)
+    ax.set_ylabel("Test Acc. (%)")
