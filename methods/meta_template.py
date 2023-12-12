@@ -383,7 +383,7 @@ class MetaTemplate(nn.Module, ABC):
             y[:, self.n_support :].flatten(),
         )
 
-        rand_id = np.random.permutation(self.n_way * self.n_support)
+        rand_id = np.random.permutation(self.n_way * self.n_query)
         x_query = x_query[rand_id]
         y_query = y_query[rand_id]
 
