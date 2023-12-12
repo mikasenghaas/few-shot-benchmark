@@ -199,7 +199,7 @@ class MAML(MetaTemplate):
 
         # Get the query labels
         # y_query = self.get_episode_labels(self.n_query, enable_grad=True)
-        y_query = y[:, self.n_support :].reshape(self.n_way * self.n_query)
+        y_query = y[:, self.n_support :].reshape(self.n_way * self.n_query).long()
 
         # Compute the cross entropy loss
         loss = self.loss_fn(scores, y_query)
