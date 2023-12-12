@@ -1,45 +1,28 @@
 \section{Results}
 
-% -------- Part 1: Benchmark
+
+\subsection{Experiment 1: General Benchmark}
+
+Table \ref{tab:tuned-benchmark} and Figure \ref{fig:benchmark-perf} present the test accuracy of various methods in a 5-way, 5-shot setting for two datasets. In this setting, methods without the SOT module achieve an average accuracy of 87\% on the \texttt{TM} dataset and 66\% on the \texttt{SP} dataset, providing a strong baseline performance.
+
+Moreover, the inclusion of the SOT module improves the performance of all methods, except for the Baseline. The \texttt{B++} method shows only a slight enhancement with SOT. In contrast, the other three methods benefit significantly from SOT, with an average performance increase of 12\% for \texttt{TM} and 48\% for \texttt{SP}. This indicates a considerable effect size from integrating the SOT module in both datasets.
+
 \input{tables/tuned-benchmark.tex}
-Table \ref{tab:tuned-benchmark} displays the results of the first part of 
-our benchmark study. We fine-tuned hyper-parameters of each method on the given dataset and 
-then evaluated it across 600 episodes. The table presents the mean accuracy,
- accompanied by a 95\% confidence interval across the episodes. 
- The \texttt{Diff} column indicates the change in mean accuracy when we 
- introduce the \texttt{SOT} module to the method.
 
-Firstly, we observe that for the 5-way, 5-shot setting, all methods without 
-\texttt{SOT} already reach an average accuracy of 87\% for the \texttt{TM} 
-dataset and 66\% for the \texttt{SP} dataset, establishing a very solid baseline performance.
-Secondly, we notice that the presence of the \texttt{SOT} module enhances all 
-methods except for the Baseline. However, for \texttt{B++}, the performance improvement is only marginal. 
-In contrast, for the remaining three methods, \texttt{SOT} improved the performance for the \texttt{TM} dataset 
-by an average of 12\% and by 48\% for the \texttt{SP} dataset. 
-Therefore, for both datasets, we observe a substantial effect size after the integration of the \texttt{SOT} module.
+\subsection{Experiment 2: Way-Shot Analysis}
 
-% -------- Part 2: way-shot analysis
-\begin{figure}
+Figure \ref{fig:way-shot} illustrates the results of the way-shot analysis, displaying test accuracy in relation to the number of classes (left subplot) and the number of samples (right subplot).
+
+Predictably, in the absence of the \texttt{SOT} module, accuracy diminishes as the number of ways increases and rises with more shots. Conversely, with the \texttt{SOT} module, accuracy remains consistent across varying numbers of ways and shots.
+
+\begin{figure}[h!]
     \centering
     \includegraphics[width=1\columnwidth]{../figures/way-shot.pdf}
-    \caption{Accuracy of the Tabula Muris dataset for different ways and shots.}
+    \caption{Test accuracy of the \texttt{ProtoNet} method on the \texttt{TM} dataset with and without the \texttt{SOT} module in various few-shot learning settings for fixed n-way (left) and n-shot (right). Individual points represent a single experiment, the line is the regression line and the shaded area is the 95\% confidence interval.}
     \label{fig:way-shot}
 \end{figure}
 
-
-Figure \ref{fig:way-shot} shows the relationship between the number of ways and shots
-and the accuracy of the \texttt{ProtoNet} method on \texttt{TM} dataset. 
-As we would expect, without the \texttt{SOT} module, the accuracy decreases with the number of ways and 
-increases with the number of shots. However, with the \texttt{SOT} module, the accuracy remains 
-stable across different ways and shots. 
-
-% -------- Part 3: SOT integration into the matching net
-\begin{figure}
-    \centering
-    \includegraphics[width=0.75\columnwidth]{../figures/sot-interaction-scatter.pdf}
-    \caption{Performane of different configurations of MatchingNet with and without SOT on the Tabula Muris dataset.}
-    \label{fig:sot-interaction-scatter}
-\end{figure}
+\subsection{Experiment 3: SOT integration}
 
 In Figure \ref{fig:sot-interaction-scatter}, we illustrate the performance of various 
 configurations of the \texttt{MatchingNet} method with and without the \texttt{SOT} 
@@ -50,3 +33,17 @@ Slightly inferior performance is observed when the query vectors are embedded.
 Most notably, the \texttt{SOT} module enhances the performance of all configurations. 
 However, the optimal performance is attained in configurations where at least one of the 
 support or query vectors is embedded.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.75\columnwidth]{../figures/sot-interaction-scatter.pdf}
+    \caption{Performane of different configurations of MatchingNet with and without SOT on the Tabula Muris dataset.}
+    \label{fig:sot-interaction-scatter}
+\end{figure}
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=0.9\linewidth]{../figures/benchmark-perf.pdf}
+    \caption{Test accuracy of all methods on \texttt{TM} (left) and \texttt{SP} (right) in the 5-way-5-shot setting.}
+    \label{fig:benchmark-perf}
+\end{figure*}
