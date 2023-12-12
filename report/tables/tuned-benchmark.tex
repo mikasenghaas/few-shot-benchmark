@@ -1,22 +1,27 @@
-\begin{table}[h]
-\caption{Results of the benchmark experiment.}
+\begin{table}[ht]
+\caption{
+    \textbf{Benchmark Results.} Test accuracy of all methods on \texttt{TM} and \texttt{SP} in the 5-way-5-shot setting. We depict the average accuracy and the 95\% confidence interval both without (left) and with SOT (right) and the difference.
+    \vspace{5pt}
+}
+
 \label{tab:tuned-benchmark}
 \centering
 \begin{tabular}{llllr}
 \toprule
- &  & Acc & w/ SOT & Diff (\%) \\
+ &  & \multicolumn{2}{@{}c}{\textbf{Test Acc. (\%)}} & \\
+ &  & w/o SOT & w/ SOT & Diff \\
 \midrule
-\multirow[c]{5}{*}{TM} & B & $90.7 \pm 0.7$ & $86.3 \pm 0.9$ & -4.8 \\
+\multirow[c]{5}{*}{\texttt{TM}} & B & $90.7 \pm 0.7$ & $86.3 \pm 0.9$ & -4.8 \\
  & B++ & $81.9 \pm 0.9$ & $82.8 \pm 0.9$ & \bfseries 1.1 \\
  & MAML & $92.8 \pm 0.5$ & $99.2 \pm 0.1$ & \bfseries 6.9 \\
- & MT & $84.6 \pm 0.8$ & $99.7 \pm 0.1$ & \bfseries 17.9 \\
- & PT & $87.1 \pm 0.8$ & $98.6 \pm 0.2$ & \bfseries 13.2 \\
+ & MN & $84.6 \pm 0.8$ & $99.7 \pm 0.1$ & \bfseries 17.9 \\
+ & PN & $87.1 \pm 0.8$ & $98.6 \pm 0.2$ & \bfseries 13.2 \\
 \midrule
-\multirow[c]{5}{*}{SP} & B & $69.2 \pm 0.7$ & $55.7 \pm 0.8$ & -19.6 \\
+\multirow[c]{5}{*}{\texttt{SP}} & B & $69.2 \pm 0.7$ & $55.7 \pm 0.8$ & -19.6 \\
  & B++ & $64.1 \pm 0.7$ & $64.6 \pm 0.7$ & \bfseries 0.8 \\
  & MAML & $68.7 \pm 0.7$ & $98.0 \pm 0.2$ & \bfseries 42.8 \\
- & MT & $68.2 \pm 0.8$ & $99.8 \pm 0.1$ & \bfseries 46.5 \\
- & PT & $63.5 \pm 0.7$ & $99.2 \pm 0.1$ & \bfseries 56.1 \\
+ & MN & $68.2 \pm 0.8$ & $99.8 \pm 0.1$ & \bfseries 46.5 \\
+ & PN & $63.5 \pm 0.7$ & $99.2 \pm 0.1$ & \bfseries 56.1 \\
 \bottomrule
 \end{tabular}
 \end{table}
