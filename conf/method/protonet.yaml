@@ -2,7 +2,7 @@ defaults:
   - meta_base
 
 name: protonet
-embed_support: true
+embed_support: false
 
 cls:
   _target_: methods.protonet.ProtoNet
