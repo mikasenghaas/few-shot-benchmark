@@ -1,31 +1,33 @@
 \section{Discussion}
 
 % General Benchmark
-\textbf{General Benchmark}. The average performance on both datasets show that the all methods are capable of learning from limited samples
-in a biomedical setting. The higher overall performance of the methods on \texttt{TM} 
-suggests that \texttt{SP} is a more challenging dataset. This could be due to the quality of extracted 
-embeddings, and possibly the lack of overlap between the train and test sets, in contrast to \texttt{TM}.
+\textbf{General Benchmark}. The collective analysis of average performance across both datasets underscores the competence 
+of all methods in extracting knowledge from biomedical datasets with limited number of samples per class. 
+Notably, the overall great performance on \texttt{TM} implies that \texttt{SP} poses a more difficult challenge. 
+This discrepancy may stem from variations in the quality of extracted embeddings and potential disparities in the train-test set overlap, 
+particularly when compared to the \texttt{TM} dataset.
 
+Examining the \texttt{SP} dataset, an intriguing pattern emerges: the incorporation of the SOT module 
+enhances the performance of all methods except for \texttt{B}, where performance sees a notable decline of almost 20\%. 
+This stark drop may be attributed to the inherent simplicity of model \texttt{B}, struggling to grapple with the added complexity introduced by the SOT module. 
+Remarkably, \texttt{B++} experiences a substantial 17\% performance boost with the SOT module, marking the most significant improvement among all methods. 
+This result is surprising given the minimal distinctions between the two methods. 
+Notably, \texttt{B++} normalizes embeddings before the final classification layer, with normalized weights. 
+Additionally, it elevates the temperature of the softmax function, fostering greater confidence in model predictions.
 
-For the \texttt{SP} dataset, we observe that integration of the SOT module improves the performance of all methods
-except from \texttt{B} for which the performance in fact decreases by almost 20\%. Such dramatic decrease in performance
-could be due to the fact that \texttt{B} is a relatively simple model and the SOT module introduces additional complexity
-that the model is not able to handle. Interestingly, the performance of \texttt{B++} increases by almost 17\% with the SOT module,
-which is the largest increase among all methods. This is suprising since the two methods differ in a very few small details.
-Namely, \texttt{B++} normlizes the embeddings before the final classification layer whose weights are also normalized. Furthermore,
-\texttt{B++} increases the temperature of the softmax function to make the model more confident in its predictions.
-
-For the \texttt{TM} dataset, we observe that the SOT module has a minimal impact on the performance of all methods
-except from \texttt{MT} for which the performance increases by 5\%. A possible explanation for this is that the
-average performance of the methods on \texttt{TM} is already very high, and thus the SOT module has little room
-for improvement. 
+Turning attention to the \texttt{TM} dataset, the impact of the SOT module appears marginal for all methods except \texttt{MT}, 
+where performance sees a modest 5\% increase. Plausible reasoning suggests that, on \texttt{TM}, 
+methods already achieve a high average performance, limiting the potential for substantial enhancement through the SOT module.
 
 % Way-Shot Analysis
-The way-shot analysis results for \texttt{MT} on the \texttt{TM} dataset confirm that the SOT module keeps
-improving the performance of the model as the number of classes increases, and the number of samples per class decreases.
-Further, we can see that despite making the configuration more challenging, \texttt{MT} is able to 
-maintain a high test accuracy of arouund 80 \%. This is a very promising result, since it shows that the model
-is able to learn from very few samples, and thus could be used in a real-world setting where the number of samples
-is limited.
+\textbf{Way-shot analysis} reveals compelling insights. Performance demonstrates a gradual 
+decline, diminishing from approximately 95\% with 2 classes to around 80\% with 10 classes. 
+Notably, the challenge intensifies, widening the confidence interval range. This underscores 
+the increasing importance of support vectors as class count rises.
 
-% SOT hyperparameters ablation
+Examining the second plot of Figure \ref{fig:way-shot}, an intriguing observation emerges: 
+possessing more than 5 support vectors doesn't necessarily enhance the model's performance. 
+Importantly, the figure indicates that, across varying class and support vector counts, 
+the \texttt{MN} with SOT module tends to exhibit marginally lower performance on average compared 
+to its counterpart without the module. However, it is crucial to emphasize that the confidence intervals overlap, 
+making the observed difference statistically insignificant.

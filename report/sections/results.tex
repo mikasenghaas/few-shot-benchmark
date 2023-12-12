@@ -21,23 +21,24 @@ In summary, the best performance on the \texttt{TM} dataset is achieved by \text
 
 
 \input{tables/tuned-benchmark.tex}
-% \caption{
-%     \textbf{Benchmark Results.} Test accuracy of all methods on \texttt{TM} and \texttt{SP} in the 5-way-5-shot setting. We depict the average accuracy and the 95\% confidence interval both without (left) and with SOT (right) and the difference.
-%     \vspace{5pt}
-% }
+
 
 \textbf{Way-Shot Analysis.} Figure \ref{fig:way-shot} presents the way-shot analysis results for \texttt{PN} on the \texttt{TM} dataset, with and without the SOT module. 
 The left subplot shows test accuracy against the number of classes, and the right subplot against the number of samples per class.
 
 Without the SOT module, there's a predictable trend: accuracy decreases with more classes but increases with additional samples per class. 
-% However, this pattern changes with the SOT module. Here, accuracy remains stable regardless of the number of ways or shots. Remarkably, in challenging scenarios like 10-way-1-shot, 
-% the model sustains a high test accuracy of around 97\%.
 
 \begin{figure}[h!]
     \centering
     \includegraphics[width=1\columnwidth]{figures/way-shot.pdf}
     \caption{\textbf{Way-Shot Analysis.} Test accuracy of \texttt{PN} on the \texttt{TM} dataset with and without the SOT module in various 
-    few-shot learning settings for fixed n-way (left) and n-shot (right). Individual points represent a single experiment. We show the regression line with a 
-    95\% confidence interval.}
+    few-shot learning settings for fixed n-way (left) and n-shot (right). Individual points represent a single experiment. We show the regression line with a 95\% confidence interval.}
     \label{fig:way-shot}
+\end{figure}
+
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=1\columnwidth]{figures/hparams-swissprot-grid.pdf}
+    \caption{Sotmething}
 \end{figure}
