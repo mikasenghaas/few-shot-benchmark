@@ -438,13 +438,12 @@ def visualise_episode(
 
 
 def visualise_transport_plan(
-    loader: torch.utils.data.DataLoader, model: nn.Module, ax: plt.Axes | None = None
+    x, model: nn.Module, ax: plt.Axes | None = None
 ):
     if not ax:
         _, ax = plt.subplots(figsize=(10, 10))
 
     # Get few-shot episode
-    x, _ = next(iter(loader))
 
     # Get the model output (including the transport plan)
     outputs = model.set_forward(x, return_intermediates=True)
@@ -453,12 +452,33 @@ def visualise_transport_plan(
     # Compute loss and accuracy
     num_correct, num_total = model.correct(x)
     acc = num_correct / num_total
-    loss = model.set_forward_loss(x)
+    # loss = model.set_forward_loss(x)
 
     # mean_row_sum = np.sum(sot_mat, axis=1).mean()
     # mean_col_sum = np.sum(sot_mat, axis=0).mean()
     sns.heatmap(sot_mat, ax=ax)
-    ax.set_title(f"SOT Embeddings (Acc. {100*acc:.2f}%, Loss {loss:.8f})")
+    ax.set_title(f"SOT Embeddings (Acc. {100*acc:.2f}%)")
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+
+def visualise_lstm(x: torch.Tensor, model: nn.Module, ax: plt.Axes | None = None):
+    if not ax:
+        _, ax = plt.subplots(figsize=(10, 10))
+
+    # Get the model output (including the transport plan)
+    outputs = model.set_forward(x, return_intermediates=True)
+    sot_mat = model.reshape2feature(outputs["lstm"]).detach().numpy()
+
+    # Compute loss and accuracy
+    num_correct, num_total = model.correct(x)
+    acc = num_correct / num_total
+    # loss = model.set_forward_loss(x)
+
+    # mean_row_sum = np.sum(sot_mat, axis=1).mean()
+    # mean_col_sum = np.sum(sot_mat, axis=0).mean()
+    sns.heatmap(sot_mat, ax=ax)
+    ax.set_title(f"LSTM Embeddings (Acc. {100*acc:.2f}%)")
     ax.set_xticks([])
     ax.set_yticks([])
 
@@ -559,8 +579,13 @@ def exp2results(df: pd.DataFrame) -> pd.DataFrame:
     df_results = pd.DataFrame(
         {
             "Method": methods,
-            "Acc": [f"${acc:.1f} \pm {ci:.1f}$" for acc, ci in zip(test_acc, test_acc_ci)],
-            "w/ SOT": [f"${acc:.1f} \pm {ci:.1f}$" for acc, ci in zip(sot_test_acc, sot_test_acc_ci)],
+            "Acc": [
+                f"${acc:.1f} \pm {ci:.1f}$" for acc, ci in zip(test_acc, test_acc_ci)
+            ],
+            "w/ SOT": [
+                f"${acc:.1f} \pm {ci:.1f}$"
+                for acc, ci in zip(sot_test_acc, sot_test_acc_ci)
+            ],
             "Diff": (sot_test_acc - test_acc) / test_acc * 100,
         }
     )
@@ -657,15 +682,15 @@ rename = lambda x: names[x] if x in names else x
 
 
 def plot_heatmap_on_ax(
-        ax,
-        results,
-        param1_values,
-        param2_values,
-        cmap,
-        xlabels=False,
-        ylabels=False,
-        vmin=0,
-        vmax=1,
+    ax,
+    results,
+    param1_values,
+    param2_values,
+    cmap,
+    xlabels=False,
+    ylabels=False,
+    vmin=0,
+    vmax=1,
 ):
     cax = ax.matshow(results, cmap=cmap, vmin=vmin, vmax=vmax, aspect="auto")
     ax.set_yticks(
@@ -738,7 +763,7 @@ def grid(df_runs, params, metric="mean", cmap="YlGn", vmin=None, vmax=None):
                 j == n - 1,
                 vmin=vmin,
                 vmax=vmax,
-                )
+            )
 
             # print labels
             if i == j - 1:
