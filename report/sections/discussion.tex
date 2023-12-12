@@ -1,21 +1,18 @@
 \section{Discussion}
 
-% Finding 1: SOT improves meta-learners but not non-meta learners
-This study reveals that the SOT module significantly enhances the performance of all meta-learners on both datasets, but not of non-meta learners. The reason lies in their distinct training methodologies. Meta-learners undergo episodic training, mimicking a few-shot learning scenario with support and query samples from various classes. This approach allows the backbone and SOT module to jointly optimise, enhancing the matching between support and query samples. Conversely, non-meta learners are trained with random mini-batches from the entire training set, focusing on general multi-class classification without distinguishing between support and query samples. Consequently, their embeddings, though effective in standard classification tasks, do not transfer well to few-shot evaluations. This is illustrated in Figure~\ref{fig:sot-embeddings}: the SOT embeddings for a Prototypical Network show clear clustering of support and query samples from the same class, unlike those for the Baseline model.
+% Finding 1: Robustness of few-shot learning methods on biomedical tasks
+Our benchmarks reveal that when data is meticulously pre-processed, various few-shot learning algorithms excel in the biomedical field. This outcome is encouraging, showing these methods' robustness in managing the intricate and specialised nature of biomedical data.
+
+% Finding 2: SOT improves meta-learners but not non-meta learners
+The most notable finding of our study is the significant role of the SOT module in enhancing the performance of meta-learners in challenging few-shot learning scenarios, as seen on both datasets. This leads to near-perfect generalisation. However, this performance boost is absent in non-meta learners, specifically \texttt{B} and \texttt{B++}. This difference likely stems from their distinct training methods. Meta-learners undergo episodic training that mirrors a few-shot environment with support and query samples across classes. The integration of the transductive SOT feature transform module enables simultaneous optimisation of the main network and the SOT module. This enhances the alignment between support and query samples, crucial for classifying query samples. Conversely, non-meta learners train with random mini-batches and lack a concept of support or query samples. Their inferences are independent, making the SOT's role in facilitating interaction between support and query samples irrelevant. For instance, in Figure~\ref{fig:sot-embeddings}, the SOT embeddings in the \texttt{PN} model demonstrate clear class-based clustering for both support and query samples, a feature not observed in the \texttt{B} model.
 
 % TODO: Adjust title of right subplot
 \begin{figure}[h!]
     \centering
     \includegraphics[width=1\columnwidth]{../figures/sot-embeddings.pdf}
-    \caption{SOT Embeddings for Prototypical Network (left) and Baseline (right) on the SwissProt dataset for a random episode from the meta-test split for a 5-way-5-shot task with 5 query samples. Support and query samples from the same class are adjacent.}
+    \caption{\textbf{SOT Embeddings.} Heatmap of SOT embeddings for \texttt{PN} (left) and \texttt{B} (right) on the \texttt{SP} dataset for a random test episode in 5-way 5-shot setting. Support and query samples from the same class are adjacent in the embedding matrix.}
     \label{fig:sot-embeddings}
 \end{figure}
 
-% Finding 2: SOT results in almost perfect performance even in most difficult few-shot learning setting
-The SOT module also improves the performance of meta-learners in the most challenging few-shot learning setting, i.e. 10-way-1-shot. This indicates that the SOT module is capable of learning a highly effective embedding, even with a single support sample per class. We hypothesise that with a more challenging dataset or even higher number of ways, the performance would decrease. However, given the limitations of the datasets, we were unable to test this hypothesis.
-
 % Finding 3: SOT improves performance in interaction with LSTM re-embedding
-While studying the interaction of the SOT module with the LSTM re-embeddings of support and query samples in Matching Networks an interesting observation was made. 
-
-we observed that the SOT module enhances the performance of the LSTM re-embedding, but not vice versa. This is likely due to the fact that the LSTM re-embedding is a more powerful embedding than the SOT module, and thus the SOT module is unable to improve it further. Conversely, the SOT module is able to enhance the performance of the baseline embedding, as it is less powerful.
-% Why? :(
+Finally, the ablation study of the re-embedding components in \texttt{MN} suggests that the synergy between the SOT re-embeddings and the LSTM re-embeddings plays a crucial role in the observed performance enhancement of the metric-based meta-learner. The underlying mechanisms of this phenomenon, however, were beyond the purview of this project and are left for future work.
