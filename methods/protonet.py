@@ -133,7 +133,13 @@ class ProtoNet(MetaTemplate):
         if self.embed_support:
             x_support = self.forward_support_lstm(x_support)
             if return_intermediates:
-                outputs["lstm"] = self.reshape2set(torch.cat([x_support, x_query]))
+                outputs["lstm"] = torch.cat(
+                    [
+                        x_support.view(self.n_way, self.n_support, -1),
+                        x_query.view(self.n_way, self.n_query, -1),
+                    ],
+                    dim=1,
+                )
 
         # Get the prototypes for each class by averaging the support embeddings
         proto = x_support.view(self.n_way, self.n_support, -1).mean(1)

@@ -143,7 +143,13 @@ class MatchingNet(MetaTemplate):
             _, x_query = self.forward_query_lstm(x_query, x_support)
         if self.embed_support or self.embed_query:
             if return_intermediates:
-                outputs["lstm"] = self.reshape2set(torch.cat([x_support, x_query]))
+                outputs["lstm"] = torch.cat(
+                    [
+                        x_support.view(self.n_way, self.n_support, -1),
+                        x_query.view(self.n_way, self.n_query, -1),
+                    ],
+                    dim=1,
+                )
 
         # Get the log probabilities for each class
         cos_similarity = x_query @ x_support.T
