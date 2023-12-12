@@ -1,10 +1,23 @@
 \section{Results}
+% Without SOT:
+% TM: (91.3 + 81.7 + 89.8 + 85 + 90)/5 = 87.56
+% SP: (69.5 + 56.4 + 58.7 + 61.6 + 61.4)/5 = 61.52
+\textbf{General Benchmark.} Table \ref{tab:tuned-benchmark} displays experiment results, showcasing models' performance with and without the SOT module. 
+Without the SOT module, models achieve an average accuracy of 87\% on the \texttt{TM} dataset and 61\% on the \texttt{SP} dataset, 
+demonstrating their capability to learn from limited samples. Notably, \texttt{B} stands out as the top performer across both datasets, 
+while \texttt{B++} ranks the lowest among all methods.
 
+% With SOT:
+% TM: (86.4 + 81.9 + 87.1 + 89.6 + 89.1)/5 = 86.42
+% SP: (55.8 + 65.8 + 64.9 + 68 + 66.4)/5 = 64.58
+With the SOT module, models maintain an average accuracy of 86\% on the \texttt{TM} dataset, 
+suggesting that the SOT module has minimal impact on performance. However, on the \texttt{SP} dataset, 
+models exhibit an average accuracy of 65\%, marking a 4\% improvement.
 
-\textbf{General Benchmark.} Table \ref{tab:tuned-benchmark} shows the experiment results. Without the SOT module, models average 87\% accuracy on the \texttt{TM} dataset and 66\% on the \texttt{SP} dataset, demonstrating their ability to learn from limited samples. 
-\texttt{MAML} and \texttt{B} are the top performers across datasets, whereas \texttt{B++} performs worst out of all methods.
-
-% With the SOT module the average accuracy on both datasets increases to 93\% on \texttt{TM} and 83\% on \texttt{SP}. This enhancement, however, is not uniform. Meta-learners significantly benefit, with their performance jumping to 99\% accuracy, showing an average increase of 12 percentage points on \texttt{TM} and 48 percentage points on \texttt{SP}. In contrast, non-meta-learners do not gain from the SOT module, with \texttt{B}'s performance declining and \texttt{B++}'s remaining static.
+Interestingly, the introduction of the SOT module causes a decline in \texttt{B}'s performance, 
+while \texttt{MT} emerges as the top performer on both datasets with the SOT module. 
+In summary, the best performance on the \texttt{TM} dataset is achieved by \texttt{B} without the SOT module, while on the \texttt{SP} dataset, 
+\texttt{MT} with the SOT module leads. However, the differences in performance are marginal in both cases.
 
 
 \input{tables/tuned-benchmark.tex}
@@ -12,7 +25,6 @@
 %     \textbf{Benchmark Results.} Test accuracy of all methods on \texttt{TM} and \texttt{SP} in the 5-way-5-shot setting. We depict the average accuracy and the 95\% confidence interval both without (left) and with SOT (right) and the difference.
 %     \vspace{5pt}
 % }
-
 
 \textbf{Way-Shot Analysis.} Figure \ref{fig:way-shot} presents the way-shot analysis results for \texttt{PN} on the \texttt{TM} dataset, with and without the SOT module. 
 The left subplot shows test accuracy against the number of classes, and the right subplot against the number of samples per class.

@@ -19,9 +19,11 @@ In the following we describe the high-level idea of each method. For details on 
 
 The \textbf{Baseline}~\cite{baseline} model implements the fine-tuning paradigm. During meta-testing, the model is fine-tuned on support samples and then classifies query samples. Within this study, we consider two variants of the trainable classification head - one learns a traditional linear and the other a cosine similarity layer. We refer to these as Baseline (\texttt{B}) and Baseline++ (\texttt{B++}), respectively.
 
-\textbf{Prototypical Networks}~\cite{protonet} (\texttt{PN}) learn an embedding space that clusters samples from the same class close together. Query samples are then classified according to the distance to the average support sample (prototype) of each class.  Our implementation uses a bidirectional LSTM to contextualise the support embeddings. We will refer to this additional embedding mechanism as support embeddings \texttt{SE}.
+\textbf{Prototypical Networks}~\cite{protonet} (\texttt{PN}) learn an embedding space that clusters samples from the same class close together. 
+Query samples are then classified according to the distance to the average support sample (prototype) of each class.
 
-\textbf{Matching Networks}~\cite{matchingnet} (\texttt{MN}) are similar to \texttt{PN}. However, in \texttt{MN} the distance between a query sample is computed to all support samples and then aggregated. Next to the already mentioned contextualised support embeddings \texttt{SE}, \texttt{MN} also contextualise the query embeddings \texttt{QE} via an attentional LSTM embedding.
+\textbf{Matching Networks}~\cite{matchingnet} (\texttt{MN}) are similar to \texttt{PN}. However, in \texttt{MN}, the distance between a query sample is computed to all support samples and then aggregated. 
+Importantly, before the distance computation, \texttt{MN} contextualises both support and query samples by re-embedding them using an LSTM.
 
 Finally, \textbf{Model Agnostic Meta Learning}~\cite{maml} (\texttt{MAML}) is an optimisation-based meta-learning approach that aims to learn an effective weight initialisation that can be adapted to new tasks in a small number of gradient steps.
 

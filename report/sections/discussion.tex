@@ -16,12 +16,6 @@ The most notable finding of our study is the significant role of the SOT module 
 
 A class prediction is independent of all other samples within a batch, making SOT's role in facilitating interaction between support and query samples irrelevant. For instance, in Figure~\ref{fig:sot-embeddings}, the SOT embeddings in the \texttt{PN} model demonstrate clear class-based clustering for both support and query samples, a features less pronounced in the \texttt{B} model.
 
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=1\columnwidth]{figures/sot-embeddings.pdf}
-    \caption{\textbf{SOT Embeddings.} Heatmap of SOT embeddings for \texttt{PN} (left) and \texttt{B} (right) on the \texttt{SP} dataset for a random test episode in 5-way 5-shot setting. Support and query samples from the same class are adjacent in the embedding matrix.}
-    \label{fig:sot-embeddings}
-\end{figure}
 
 % Finding 3: SOT improves performance in interaction with LSTM re-embedding
 Finally, the ablation study of the re-embedding components in \texttt{MN} suggests that the synergy between the SOT re-embeddings and the LSTM re-embeddings plays a crucial role in the observed performance enhancement of the metric-based meta-learner. The underlying mechanisms of this phenomenon, however, were beyond the purview of this project and are left for future work.
