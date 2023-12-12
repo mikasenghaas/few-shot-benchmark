@@ -10,7 +10,7 @@ class FCNet(nn.Module):
     def __init__(
         self,
         x_dim: int,
-        layer_dim: list = [64, 64],
+        feat_dim: list = 64,
         dropout: float = 0.2,
         fast_weight: bool = False,
         **kwargs,
@@ -29,6 +29,7 @@ class FCNet(nn.Module):
 
         layers = []
         in_dim = x_dim
+        layer_dim = [feat_dim] * 2
         for dim in layer_dim:
             if self.fast_weight:
                 layers.append(full_block_fw(in_dim, dim, dropout))

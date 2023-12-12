@@ -11,5 +11,5 @@ set_cls:
 
 backbone:
   name: FCNet
+  feat_dim: 512
   _target_: backbones.fcnet.FCNet
-  layer_dim: [512, 512]
