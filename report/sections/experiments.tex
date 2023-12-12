@@ -1,33 +1,34 @@
-\section{Experiments}
+\section{Methodology}
 
-An experiment in our study is defined as a combination of a few-shot learning \textit{method}, optionally including the \textit{SOT} feature transform, trained and evaluated on a \textit{dataset} within a specified few-shot learning setting. This setting is characterised by the number of classes (\textit{n-way}) and the number of samples per class (\textit{n-shot}).
+An experiment in our study is defined as a combination of a few-shot learning \textit{method}, optionally including the \textit{SOT} feature transform, trained and evaluated on a \textit{dataset} within a specified few-shot learning setting, characterised by the number of classes (\textit{n-way}) and the number of samples per class (\textit{n-shot}).
+
+\subsection{Experiment Setup}
 
 % Backbone
-\textbf{Backbone.} All experiments employ a fully-connected feed-forward neural network with batch normalisation, ReLU activation, and dropout. The network has two hidden layers, with neuron counts tailored to the datasets: 64 for the TM dataset and 512 for the SP dataset.
+\textbf{Backbone.} All experiments employ a fully-connected feed-forward neural network with batch normalisation, ReLU activation, and dropout. The network has two hidden layers, with neuron counts tailored to the datasets: 64 for the \texttt{TM} dataset and 512 for the \texttt{SP} dataset.
 
 % Model training
 \textbf{Training.} Training of the models is conducted for a maximum of 40 epochs, employing the Adam optimiser with varying learning rates. We implement early stopping after five epochs of no improvement in validation accuracy. 
 
 % Hyperparameter tuning
-\textbf{Tuning.} Hyperparameter tuning is performed, unless specified otherwise. Tuning includes the learning rate ($\lambda = \{0.001, 0.0005\}$) and parameters specific to the SOT feature module, namely the regularisation parameter ($\gamma = \{0.1, 1.0\}$) and the choice of distance metric used for computing distance matrix ($\delta = \{cos, eucl\}$). The hyperparameters are tuned using the validation split of the dataset. The model demonstrating the best performance on the validation split is chosen for the final evaluation on the test split.
-
+\textbf{Tuning.} Hyperparameter tuning is performed, unless specified otherwise. Tuning includes the learning rate ($\lambda = \{0.001, 0.0005\}$) for all methods. For models including the SOT module, we adapt the hyperparameter grid proposed by \citeauthor{sot}, namely the regularisation parameter ($\gamma = \{0.1, 1.0\}$) and the choice of distance metric ($\delta = \{cos, eucl\}$). 
+The hyperparameters are tuned using the validation split of the dataset. The model demonstrating the best performance on the validation split is evaluated on the test split and reported.
 
 % TODO: Here, we should probably argue for the selection and ranges of our hyper-parameters :(
 
 % Evaluation
 \textbf{Evaluation.} A model performance's is reported through the mean and 95\% confidence interval of the few-shot accuracy, calculated over 600 episodes with each episode utilising five query samples per class.
 
+
+\subsection{Experiments}
+
 Due to the impracticality of exhaustive hyperparameter grid searching across all experimental configurations, we have structured our experiments into three distinct groups. Each group fixes certain parameters, allowing us to focus on the impact of the variables of interest.
 
-\subsection{Experiment 1: General Benchmark}
+\textbf{General Benchmark.} This experiment group evaluates models, with and without SOT feature transform, on both datasets in a 5-way-5-shot setting, comprising 20 experiments. The aim is to analyse the influence of the method, dataset, and SOT module on few-shot learning performance.
 
-This batch evaluates models, with and without SOT feature transform, on both datasets in a 5-way-5-shot setting, comprising 20 experiments. The aim is to analyse the influence of the method, dataset, and SOT module on few-shot learning performance.
 
-\subsection{Experiment 2: Way-Shot Analysis}
+\textbf{Way-Shot Analysis.} In the second group we investigate the performance in various few-shot learning settings,exploring combinations of n-way ({2, 4, 6, 8, 10}) and n-shot ({1, 5, 10, 15, 20}). Here, we fix the method to \texttt{PN} and the dataset to \texttt{TM}, resulting in 50 experiments.
 
-In the second batch, our focus narrows to Prototypical Networks, both with and without the SOT feature transform, applied to the Tabula Muris dataset in various few-shot learning scenarios. Exploring combinations of n-way ({2, 4, 6, 8, 10}) and n-shot ({1, 5, 10, 15, 20}), this batch totals 50 experiments. The objective is to examine the SOT feature transform's behavior across different few-shot learning settings.
 
-\subsection{Experiment 3: SOT Interaction} 
-
-The final batch investigates the interaction between the SOT feature transform and the embedding components of Matching Networks (\texttt{SE}, \texttt{QE}). This includes training eight variations of Matching Networks, with and without all combinations of enabled embedding modules on the Tabula Muris dataset in a 5-way-5-shot setting. The aim is to explore how the SOT feature transform integrates with embedding components in metric-based meta-learning methods.
+\textbf{SOT Interaction.} The final group investigates the interaction between the SOT feature transform and the embedding components of Matching Networks (\texttt{SE}, \texttt{QE}). This includes training eight variations of \texttt{MN}, with and without all combinations of embedding modules on the \texttt{TM} dataset in a 5-way-5-shot setting. The aim is to explore how the SOT feature transform integrates with embedding components in metric-based meta-learning methods.
 

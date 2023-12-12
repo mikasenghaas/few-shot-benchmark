@@ -1,12 +1,21 @@
 \section{Discussion}
 
-% Finding 1: Robustness of few-shot learning methods on biomedical tasks
-Our benchmarks reveal that when data is meticulously pre-processed, various few-shot learning algorithms excel in the biomedical field. This outcome is encouraging, showing these methods' robustness in managing the intricate and specialised nature of biomedical data.
-
 % Finding 2: SOT improves meta-learners but not non-meta learners
-The most notable finding of our study is the significant role of the SOT module in enhancing the performance of meta-learners in challenging few-shot learning scenarios, as seen on both datasets. This leads to near-perfect generalisation. However, this performance boost is absent in non-meta learners, specifically \texttt{B} and \texttt{B++}. This difference likely stems from their distinct training methods. Meta-learners undergo episodic training that mirrors a few-shot environment with support and query samples across classes. The integration of the transductive SOT feature transform module enables simultaneous optimisation of the main network and the SOT module. This enhances the alignment between support and query samples, crucial for classifying query samples. Conversely, non-meta learners train with random mini-batches and lack a concept of support or query samples. Their inferences are independent, making the SOT's role in facilitating interaction between support and query samples irrelevant. For instance, in Figure~\ref{fig:sot-embeddings}, the SOT embeddings in the \texttt{PN} model demonstrate clear class-based clustering for both support and query samples, a feature not observed in the \texttt{B} model.
+The most notable finding of our study is the significant role of the SOT module in enhancing the performance of meta-learners, even in challenging few-shot learning scenarios showcasing near-perfect generalisation. However, this performance boost is absent in non-meta learners. This difference likely stems from their distinct training methods. Meta-learners undergo episodic training that mirrors a few-shot environment with support and query samples across classes. The integration of the transductive SOT feature transform module enables optimisation of the backbone with the SOT module enhancing the alignment between support and query samples, crucial for classifying query samples. In contrast, non-meta learners train with random mini-batches and lack a concept of support or query samples. In this setting, the similarity-based feature matrix of the SOT module is meaningless.
 
-% TODO: Adjust title of right subplot
+% Argument 1) Order matters
+
+% Batch training: 
+% - Similarities between samples carry no meaning for multi-class classification problem
+% Example: Dog and cat image in 100-way classification problem. Knowledge of cat (doesn't) help predicting dog.
+
+% Episodic training
+
+% During an episode, I am guaranteed to see at least one sample for all classes that I want to predict.
+% Hence, matching a query to the closest support is meaningful
+
+A class prediction is independent of all other samples within a batch, making SOT's role in facilitating interaction between support and query samples irrelevant. For instance, in Figure~\ref{fig:sot-embeddings}, the SOT embeddings in the \texttt{PN} model demonstrate clear class-based clustering for both support and query samples, a features less pronounced in the \texttt{B} model.
+
 \begin{figure}[h!]
     \centering
     \includegraphics[width=1\columnwidth]{../figures/sot-embeddings.pdf}
