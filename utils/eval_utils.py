@@ -561,6 +561,10 @@ def exp2results(df: pd.DataFrame) -> pd.DataFrame:
     sot_test_acc = df[df[("config", "use_sot")]][("eval", "test/acc")].values
     test_acc = df[~df[("config", "use_sot")]][("eval", "test/acc")].values
 
+    # Get index of the best run for each method w/ and w/o SOT
+    sot_best_run_idx = df[df[("config", "use_sot")]][("eval", "test/acc")].values.argmax()
+    best_run_idx = df[~df[("config", "use_sot")]][("eval", "test/acc")].values.argmax()
+
     # Get the confidence intervals
     sot_test_acc_ci = df[df[("config", "use_sot")]][("eval", "test/acc_ci")].values
     test_acc_ci = df[~df[("config", "use_sot")]][("eval", "test/acc_ci")].values
@@ -579,12 +583,13 @@ def exp2results(df: pd.DataFrame) -> pd.DataFrame:
     df_results = pd.DataFrame(
         {
             "Method": methods,
-            "Acc": [
-                f"${acc:.1f} \pm {ci:.1f}$" for acc, ci in zip(test_acc, test_acc_ci)
+            "w/o SOT": [
+                f"${acc:.1f} \pm {ci:.1f}$" if i != best_run_idx else "$\mathbf{" + f"{acc:.1f} \pm {ci:.1f}" + "}$" 
+                for i, (acc, ci) in enumerate(zip(test_acc, test_acc_ci))
             ],
             "w/ SOT": [
-                f"${acc:.1f} \pm {ci:.1f}$"
-                for acc, ci in zip(sot_test_acc, sot_test_acc_ci)
+                f"${acc:.1f} \pm {ci:.1f}$" if i != sot_best_run_idx else "$\mathbf{" + f"{acc:.1f} \pm {ci:.1f}" + "}$"
+                for i, (acc, ci) in enumerate(zip(sot_test_acc, sot_test_acc_ci))
             ],
             "Diff": (sot_test_acc - test_acc) / test_acc * 100,
         }
@@ -610,7 +615,14 @@ def exp2latex(df: pd.DataFrame) -> str:
     # Style the results
     df_styled = df.style.format(precision=1).map(
         lambda x: "font-weight: bold" if x > 0 else "", subset=["Diff"]
+    ).map(
+        lambda x: "color: red" if x < 0 else "color: teal", subset=["Diff"]
     )
+
+    # Define the caption
+    caption = "\\textbf{Benchmark Results}. Test accuracy of all methods on TM and SP \
+    \ in the 5-way-5-shot setting. We depict the average accuracy and the 95\% confidence  \
+    \ interval both without (left) and with SOT (right) and the difference."
 
     # Convert to latex
     latex = df_styled.to_latex(
@@ -618,7 +630,7 @@ def exp2latex(df: pd.DataFrame) -> str:
         hrules=True,
         clines=None,
         label="tab:tuned-benchmark",
-        caption="Results of the benchmark experiment.",
+        caption=caption,
         sparse_index=True,
         multirow_align="c",
         convert_css=True,
@@ -661,6 +673,19 @@ def exp2latex(df: pd.DataFrame) -> str:
         )
     else:
         print("❌ Could not find the row to insert centering.")
+
+
+    # Insert test accuracy to the top of the table
+    search_term = r"\toprule"
+    top_rule_index = latex.find(search_term) + len(search_term)
+    if top_rule_index != -1:
+        latex = (
+            latex[:top_rule_index]
+            + "\n& & \multicolumn{2}{c}{\\textbf{Test Accuracy (\%)}} &  \\\\"
+            + latex[top_rule_index:]
+        )
+    else:
+        print("❌ Could not find the row to insert the midrule.")
 
     return latex
 
