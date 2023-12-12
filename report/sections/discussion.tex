@@ -1,21 +1,31 @@
 \section{Discussion}
 
-% Finding 2: SOT improves meta-learners but not non-meta learners
-The most notable finding of our study is the significant role of the SOT module in enhancing the performance of meta-learners, even in challenging few-shot learning scenarios showcasing near-perfect generalisation. However, this performance boost is absent in non-meta learners. This difference likely stems from their distinct training methods. Meta-learners undergo episodic training that mirrors a few-shot environment with support and query samples across classes. The integration of the transductive SOT feature transform module enables optimisation of the backbone with the SOT module enhancing the alignment between support and query samples, crucial for classifying query samples. In contrast, non-meta learners train with random mini-batches and lack a concept of support or query samples. In this setting, the similarity-based feature matrix of the SOT module is meaningless.
-
-% Argument 1) Order matters
-
-% Batch training: 
-% - Similarities between samples carry no meaning for multi-class classification problem
-% Example: Dog and cat image in 100-way classification problem. Knowledge of cat (doesn't) help predicting dog.
-
-% Episodic training
-
-% During an episode, I am guaranteed to see at least one sample for all classes that I want to predict.
-% Hence, matching a query to the closest support is meaningful
-
-A class prediction is independent of all other samples within a batch, making SOT's role in facilitating interaction between support and query samples irrelevant. For instance, in Figure~\ref{fig:sot-embeddings}, the SOT embeddings in the \texttt{PN} model demonstrate clear class-based clustering for both support and query samples, a features less pronounced in the \texttt{B} model.
+% General Benchmark
+\textbf{General Benchmark}. The average performance on both datasets show that the all methods are capable of learning from limited samples
+in a biomedical setting. The higher overall performance of the methods on \texttt{TM} 
+suggests that \texttt{SP} is a more challenging dataset. This could be due to the quality of extracted 
+embeddings, and possibly the lack of overlap between the train and test sets, in contrast to \texttt{TM}.
 
 
-% Finding 3: SOT improves performance in interaction with LSTM re-embedding
-Finally, the ablation study of the re-embedding components in \texttt{MN} suggests that the synergy between the SOT re-embeddings and the LSTM re-embeddings plays a crucial role in the observed performance enhancement of the metric-based meta-learner. The underlying mechanisms of this phenomenon, however, were beyond the purview of this project and are left for future work.
+For the \texttt{SP} dataset, we observe that integration of the SOT module improves the performance of all methods
+except from \texttt{B} for which the performance in fact decreases by almost 20\%. Such dramatic decrease in performance
+could be due to the fact that \texttt{B} is a relatively simple model and the SOT module introduces additional complexity
+that the model is not able to handle. Interestingly, the performance of \texttt{B++} increases by almost 17\% with the SOT module,
+which is the largest increase among all methods. This is suprising since the two methods differ in a very few small details.
+Namely, \texttt{B++} normlizes the embeddings before the final classification layer whose weights are also normalized. Furthermore,
+\texttt{B++} increases the temperature of the softmax function to make the model more confident in its predictions.
+
+For the \texttt{TM} dataset, we observe that the SOT module has a minimal impact on the performance of all methods
+except from \texttt{MT} for which the performance increases by 5\%. A possible explanation for this is that the
+average performance of the methods on \texttt{TM} is already very high, and thus the SOT module has little room
+for improvement. 
+
+% Way-Shot Analysis
+The way-shot analysis results for \texttt{MT} on the \texttt{TM} dataset confirm that the SOT module keeps
+improving the performance of the model as the number of classes increases, and the number of samples per class decreases.
+Further, we can see that despite making the configuration more challenging, \texttt{MT} is able to 
+maintain a high test accuracy of arouund 80 \%. This is a very promising result, since it shows that the model
+is able to learn from very few samples, and thus could be used in a real-world setting where the number of samples
+is limited.
+
+% SOT hyperparameters ablation
