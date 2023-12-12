@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+from sklearn.preprocessing import LabelEncoder
 
 from .sot import SOT
 
@@ -154,7 +155,7 @@ class MetaTemplate(nn.Module, ABC):
 
         return z_support, z_query
 
-    def correct(self, x: torch.Tensor) -> Tuple[float, int]:
+    def correct(self, x: torch.Tensor, y) -> Tuple[float, int]:
         """
         [Helper] Compute number of correct predictions.
 
@@ -170,18 +171,18 @@ class MetaTemplate(nn.Module, ABC):
         # Scores is of shape (n_way * n_query, n_way)
         outputs = self.set_forward(x)
         scores = outputs["scores"]
+        preds = scores.argmax(dim=1)
 
         # Get the labels of the query set
         # Ex. n_way = 2, n_query = 3 -> y_query = [0, 0, 0, 1, 1, 1]
-        y_query = self.get_episode_labels(self.n_query, enable_grad=False).cpu().numpy()
+        # y_query = self.get_episode_labels(self.n_query, enable_grad=False).cpu().numpy()
+        y_query = y[:, self.n_support :].reshape(self.n_way * self.n_query)
 
         # Argmax the scores to get the predictions, i.e., for each
         # query sample, we get the class with the highest score
-        _, topk_labels = scores.data.topk(k=1, dim=1, largest=True, sorted=True)
-        topk_ind = topk_labels.cpu().numpy()
 
         # Compute the number of correct predictions
-        top1_correct = np.sum(topk_ind[:, 0] == y_query)
+        top1_correct = (preds == y_query).sum()
 
         return float(top1_correct), len(y_query)
 
@@ -334,15 +335,22 @@ class MetaTemplate(nn.Module, ABC):
             f"Training: Epoch {epoch:03d} | Episodes 000/{num_episodes:03d} | 0.0000"
         )
         loss = 0.0
-        for i, (x, _) in pbar:
+        for i, (x, y) in pbar:
             # Set the number of query samples and classes
             self.set_nquery(x)
             if self.change_way:
                 self.set_nway(x)
 
+            # Reshuffle
+            x, y = self.shuffle_queries(x, y)
+
+            # Integer encode
+            mapper = {c.item(): i for i, c in enumerate(y[:, 0])}
+            y = y.apply_(lambda x: mapper[x])
+
             # Run one iteration of the optimization process
             optimizer.zero_grad()
-            batch_loss = self.set_forward_loss(x)
+            batch_loss = self.set_forward_loss(x, y)
             batch_loss.backward()
             optimizer.step()
 
@@ -356,6 +364,38 @@ class MetaTemplate(nn.Module, ABC):
         epoch_loss = loss / num_episodes
 
         return epoch_loss
+
+    def shuffle_queries(self, x, y):
+        """
+        [MetaLearning] Shuffle the query set.
+
+        Args:
+            x (torch.Tensor): input tensor
+            y (torch.Tensor): label tensor
+
+        Returns:
+            x (torch.Tensor): shuffled input tensor
+            y (torch.Tensor): shuffled label tensor
+        """
+        x_support, x_query = self.parse_feature(x)
+        y_support, y_query = (
+            y[:, : self.n_support].flatten(),
+            y[:, self.n_support :].flatten(),
+        )
+
+        rand_id = np.random.permutation(self.n_way * self.n_support)
+        x_query = x_query[rand_id]
+        y_query = y_query[rand_id]
+
+        x_support = x_support.reshape(self.n_way, self.n_support, -1)
+        y_support = y_support.reshape(self.n_way, self.n_support)
+        x_query = x_query.reshape(self.n_way, self.n_query, -1)
+        y_query = y_query.reshape(self.n_way, self.n_query)
+
+        x = torch.cat((x_support, x_query), dim=1)
+        y = torch.cat((y_support, y_query), dim=1)
+
+        return x, y
 
     def test_loop(self, test_loader: torch.utils.data.DataLoader) -> (float, float):
         """
@@ -377,14 +417,21 @@ class MetaTemplate(nn.Module, ABC):
         pbar = self.get_progress_bar(enumerate(test_loader), total=num_batches)
         pbar.set_description(f"Testing: Episodes 000/{num_batches:03d} | 0.0000")
         total_correct, total_preds = 0, 0
-        for i, (x, _) in pbar:
+        for i, (x, y) in pbar:
             # Set the number of query samples and classes
             self.set_nquery(x)
             if self.change_way:
                 self.set_nway(x)
 
+            # Reshuffle
+            x, y = self.shuffle_queries(x, y)
+
+            # Integer encode
+            mapper = {c.item(): i for i, c in enumerate(y[:, 0])}
+            y = y.apply_(lambda x: mapper[x])
+
             # Compute the accuracy
-            correct, preds = self.correct(x)
+            correct, preds = self.correct(x, y)
             evals.append([correct, preds])
 
             total_correct += correct
@@ -399,65 +446,3 @@ class MetaTemplate(nn.Module, ABC):
 
         # Return the mean and (standard deviation) of the accuracy
         return acc_mean, acc_ci, acc_std
-
-    def adapt(
-        self,
-        model: torch.nn.Module,
-        optimizer: torch.optim.Optimizer,
-        support: Tuple[torch.Tensor, torch.Tensor],
-        query: torch.Tensor,
-        loss_function: torch.nn.Module,
-        batch_size: int = 4,
-    ):
-        """
-        [Finetune] Finetune the model by freezing the backbone and training a new softmax clasifier.
-        The query set is used to evaluate the model.
-
-        Args:
-            model (torch.nn.Module): model to finetune
-            optimizer (torch.optim.Optimizer): optimizer
-            support (Tuple[torch.Tensor, torch.Tensor]): support set
-            query (torch.Tensor): query set
-            loss_function (torch.nn.Module): loss function
-            batch_size (int): batch size
-
-        Returns:
-            scores (torch.Tensor): scores of the query set of shape (n_way * n_query, n_way)
-        """
-
-        # Get the support features and labels
-        z_support, y_support = support
-
-        # Get the size of the support set
-        support_size = self.n_way * self.n_support
-        assert z_support.size(0) == support_size, "Error: support set size is incorrect"
-
-        # Finetune the classifier
-        for _ in range(100):
-            # Shuffle the support set
-            rand_id = np.random.permutation(support_size)
-            for i in range(0, support_size, batch_size):
-                # Reset the gradients
-                optimizer.zero_grad()
-
-                # Select the batch from the support set
-                selected_id = torch.from_numpy(
-                    rand_id[i : min(i + batch_size, support_size)]
-                ).to(self.device)
-
-                # Get the embeddings and labels for the batch
-                z_batch = z_support[selected_id]
-                y_batch = y_support[selected_id]
-
-                # Compute the predictions and loss
-                scores = model(z_batch)
-                loss = loss_function(scores, y_batch)
-
-                # Backpropagate the loss
-                loss.backward()
-                optimizer.step()
-
-        # Compute the final predictions for the query set
-        scores = model(query)
-
-        return scores

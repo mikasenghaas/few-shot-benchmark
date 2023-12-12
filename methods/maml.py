@@ -111,7 +111,7 @@ class MAML(MetaTemplate):
         """
         Run backbone and classifier on input data and perform adaptation.
 
-        Args:
+        Args
             x (Union[List[torch.Tensor], torch.Tensor]) : input data of shape (batch_size, *)
             return_intermediates (bool): whether to return the intermediate features
 
@@ -182,7 +182,7 @@ class MAML(MetaTemplate):
         )
 
     def set_forward_loss(
-        self, x: Union[torch.Tensor, List[torch.Tensor]]
+        self, x: Union[torch.Tensor, List[torch.Tensor]], y
     ) -> torch.Tensor:
         """Compute the loss for the current task.
 
@@ -198,7 +198,8 @@ class MAML(MetaTemplate):
         scores = outputs["scores"]
 
         # Get the query labels
-        y_query = self.get_episode_labels(self.n_query, enable_grad=True)
+        # y_query = self.get_episode_labels(self.n_query, enable_grad=True)
+        y_query = y[:, self.n_support :].reshape(self.n_way * self.n_query)
 
         # Compute the cross entropy loss
         loss = self.loss_fn(scores, y_query)
@@ -231,9 +232,18 @@ class MAML(MetaTemplate):
         pbar.set_description(
             f"Training: Epoch {epoch:03d} | Episodes 000/{num_episodes:03d} | 0.0000"
         )
-        for i, (x, _) in pbar:
+        for i, (x, y) in pbar:
             # Reset the gradients
             optimizer.zero_grad()
+
+            self.set_nquery(x)
+
+            # Reshuffle
+            x, y = self.shuffle_queries(x, y)
+
+            # Integer encode
+            mapper = {c.item(): i for i, c in enumerate(y[:, 0])}
+            y = y.apply_(lambda x: mapper[x])
 
             # Check if the number of classes is correct
             n_way = x.size(0)
@@ -242,7 +252,7 @@ class MAML(MetaTemplate):
             ), f"MAML do not support way change, n_way is {self.n_way} but x.size(0) is {x.size(0)}"
 
             # Compute the loss on the query set after adaptation on the support set
-            episode_loss = self.set_forward_loss(x)
+            episode_loss = self.set_forward_loss(x, y)
 
             # Update the tracking variables
             loss += episode_loss.item()

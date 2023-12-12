@@ -165,7 +165,7 @@ class MatchingNet(MetaTemplate):
         return outputs
 
     def set_forward_loss(
-        self, x: Union[torch.Tensor, List[torch.Tensor]]
+        self, x: Union[torch.Tensor, List[torch.Tensor]], y
     ) -> torch.Tensor:
         """Compute the loss for the current task.
 
@@ -177,7 +177,8 @@ class MatchingNet(MetaTemplate):
         """
 
         # Get the query labels
-        y_query = self.get_episode_labels(self.n_query, enable_grad=True)
+        # y_query = self.get_episode_labels(self.n_query, enable_grad=True)
+        y_query = y[:, self.n_support :].reshape(self.n_way * self.n_query)
 
         # Compute the scores (logprobs)
         outputs = self.set_forward(x)

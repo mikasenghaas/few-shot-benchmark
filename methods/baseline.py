@@ -1,3 +1,5 @@
+from typing import Tuple
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -256,3 +258,65 @@ class Baseline(MetaTemplate):
         outputs["scores"] = scores
 
         return outputs
+
+    def adapt(
+        self,
+        model: torch.nn.Module,
+        optimizer: torch.optim.Optimizer,
+        support: Tuple[torch.Tensor, torch.Tensor],
+        query: torch.Tensor,
+        loss_function: torch.nn.Module,
+        batch_size: int = 4,
+    ):
+        """
+        [Finetune] Finetune the model by freezing the backbone and training a new softmax clasifier.
+        The query set is used to evaluate the model.
+
+        Args:
+            model (torch.nn.Module): model to finetune
+            optimizer (torch.optim.Optimizer): optimizer
+            support (Tuple[torch.Tensor, torch.Tensor]): support set
+            query (torch.Tensor): query set
+            loss_function (torch.nn.Module): loss function
+            batch_size (int): batch size
+
+        Returns:
+            scores (torch.Tensor): scores of the query set of shape (n_way * n_query, n_way)
+        """
+
+        # Get the support features and labels
+        z_support, y_support = support
+
+        # Get the size of the support set
+        support_size = self.n_way * self.n_support
+        assert z_support.size(0) == support_size, "Error: support set size is incorrect"
+
+        # Finetune the classifier
+        for _ in range(100):
+            # Shuffle the support set
+            rand_id = np.random.permutation(support_size)
+            for i in range(0, support_size, batch_size):
+                # Reset the gradients
+                optimizer.zero_grad()
+
+                # Select the batch from the support set
+                selected_id = torch.from_numpy(
+                    rand_id[i : min(i + batch_size, support_size)]
+                ).to(self.device)
+
+                # Get the embeddings and labels for the batch
+                z_batch = z_support[selected_id]
+                y_batch = y_support[selected_id]
+
+                # Compute the predictions and loss
+                scores = model(z_batch)
+                loss = loss_function(scores, y_batch)
+
+                # Backpropagate the loss
+                loss.backward()
+                optimizer.step()
+
+        # Compute the final predictions for the query set
+        scores = model(query)
+
+        return scores
