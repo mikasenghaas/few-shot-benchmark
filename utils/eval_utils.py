@@ -98,13 +98,13 @@ def extract_hyperparams(run: Run) -> dict:
     config = run.config
 
     lr = config["train"]["lr"]
-    # feat_dim = config["dataset"]["backbone"]["feat_dim"]
+    feat_dim = config["dataset"]["backbone"]["feat_dim"]
     sot_reg = config["sot"]["cls"]["ot_reg"]
     sot_dist_metric = config["sot"]["cls"]["distance_metric"]
 
     return {
         "lr": lr,
-        # "feat_dim": feat_dim,
+        "feat_dim": feat_dim,
         "sot_reg": sot_reg,
         "sot_dist_metric": sot_dist_metric,
     }
@@ -697,10 +697,10 @@ def aggregate(df, param_tuples, metric="mean"):
 
 names = {
     "lr": "Learning Rate",
-    "feat_dim": "Backbone Dimension",
-    "sot_dist_metric": "SOT Distance Metric",
+    "feat_dim": "Backbone\nDimension",
+    "sot_dist_metric": "SOT Distance\nMetric",
     "use_sot": "SOT",
-    "sot_reg": "SOT Regularization",
+    "sot_reg": "SOT\nRegularization",
     "method": "Method",
     "dataset": "Dataset",
 }
@@ -766,7 +766,7 @@ def calcualte_vs(df_runs, params, metric="mean", vmin=None, vmax=None):
 # grid of (n-1 x n-1) plots, n is number of hyperparameters, each plot is a heatmap of mean test acc for different hyperparameter value combinations
 def grid(df_runs, params, metric="mean", cmap="YlGn", vmin=None, vmax=None):
     n = len(params)
-    fig, axs = plt.subplots(nrows=n - 1, ncols=n - 1, figsize=(20, 20))
+    fig, axs = plt.subplots(nrows=n - 1, ncols=n - 1, figsize=(15, 10))
     fig.tight_layout(pad=3.0)
 
     vmin, vmax = calcualte_vs(df_runs, params, metric, vmin=vmin, vmax=vmax)
