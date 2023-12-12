@@ -1,22 +1,23 @@
 \section{Experiments}
 
-An experiment in our study is defined as a combination of a few-shot learning \textit{method}, optionally including the \textit{SOT} feature transform, trained and evaluated on a \textit{dataset} within a specified few-shot learning setting. This setting is characterized by the number of classes (\textit{n-way}) and the number of samples per class (\textit{n-shot}).
-
-Due to the impracticality of exhaustive hyperparameter grid searching across all experimental configurations, we have structured our experiments into three distinct groups. Each group fixes certain parameters, allowing us to focus on the impact of the variables of interest.
+An experiment in our study is defined as a combination of a few-shot learning \textit{method}, optionally including the \textit{SOT} feature transform, trained and evaluated on a \textit{dataset} within a specified few-shot learning setting. This setting is characterised by the number of classes (\textit{n-way}) and the number of samples per class (\textit{n-shot}).
 
 % Backbone
-All experiments employ a fully-connected feed-forward neural network with batch normalization, ReLU activation, and dropout. The network has two hidden layers, with neuron counts tailored to the datasets: 64 for the TM dataset and 512 for the SP dataset.
+\textbf{Backbone.} All experiments employ a fully-connected feed-forward neural network with batch normalisation, ReLU activation, and dropout. The network has two hidden layers, with neuron counts tailored to the datasets: 64 for the TM dataset and 512 for the SP dataset.
 
 % Model training
-Training of the models is conducted for a maximum of 40 epochs, employing the Adam optimizer with varying learning rates. We implement early stopping after five epochs of no improvement in validation accuracy. This strategy not only prevents overfitting but also optimizes training time. The model demonstrating the best performance on the validation set is then chosen for the final evaluation.
+\textbf{Training.} Training of the models is conducted for a maximum of 40 epochs, employing the Adam optimiser with varying learning rates. We implement early stopping after five epochs of no improvement in validation accuracy. 
 
 % Hyperparameter tuning
-For a comprehensive understanding, hyperparameters are meticulously tuned, unless specified otherwise. This tuning includes the learning rate ($\lambda = \{0.001, 0.0005\}$) and parameters specific to the SOT feature module, namely the regularization parameter ($\gamma = \{0.1, 1.0\}$) and the choice between cosine and euclidean distance metrics.
+\textbf{Tuning.} Hyperparameter tuning is performed, unless specified otherwise. Tuning includes the learning rate ($\lambda = \{0.001, 0.0005\}$) and parameters specific to the SOT feature module, namely the regularisation parameter ($\gamma = \{0.1, 1.0\}$) and the choice of distance metric used for computing distance matrix ($\delta = \{cos, eucl\}$). The hyperparameters are tuned using the validation split of the dataset. The model demonstrating the best performance on the validation split is chosen for the final evaluation on the test split.
+
 
 % TODO: Here, we should probably argue for the selection and ranges of our hyper-parameters :(
 
 % Evaluation
-Model performance is evaluated using the mean, standard deviation, and 95\% confidence interval of the few-shot accuracy, calculated over 600 episodes. Consistency is maintained across all experiments, with each episode utilizing five query samples per class.
+\textbf{Evaluation.} A model performance's is reported through the mean and 95\% confidence interval of the few-shot accuracy, calculated over 600 episodes with each episode utilising five query samples per class.
+
+Due to the impracticality of exhaustive hyperparameter grid searching across all experimental configurations, we have structured our experiments into three distinct groups. Each group fixes certain parameters, allowing us to focus on the impact of the variables of interest.
 
 \subsection{Experiment 1: General Benchmark}
 
@@ -28,4 +29,5 @@ In the second batch, our focus narrows to Prototypical Networks, both with and w
 
 \subsection{Experiment 3: SOT Interaction} 
 
-The final batch investigates the interaction between the SOT feature transform and the embedding components of Matching Networks, considering both support and query samples. This includes training eight variations of matching networks, with and without all combinations of enabled embedding modules (SOT, LSTM for support samples, Contextual LSTM for query samples) on the Tabula Muris dataset in a 5-way-5-shot setting. The aim is to explore how the SOT feature transform integrates with embedding components in metric-based meta-learning methods.
+The final batch investigates the interaction between the SOT feature transform and the embedding components of Matching Networks (\texttt{SE}, \texttt{QE}). This includes training eight variations of Matching Networks, with and without all combinations of enabled embedding modules on the Tabula Muris dataset in a 5-way-5-shot setting. The aim is to explore how the SOT feature transform integrates with embedding components in metric-based meta-learning methods.
+
