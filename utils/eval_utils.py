@@ -13,8 +13,6 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.decomposition import PCA
 from sklearn.metrics import confusion_matrix
 
-from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
-
 import sys
 
 sys.path.append("..")
@@ -728,7 +726,9 @@ def plot_heatmap_on_ax(
 ):
     cax = ax.matshow(results, cmap=cmap, vmin=vmin, vmax=vmax, aspect="auto")
     ax.set_yticks(
-        np.arange(len(param1_values)), param1_values if ylabels else [], fontsize=22
+        np.arange(len(param1_values)),
+        param1_values if ylabels else [],
+        fontsize=22
     )
     ax.set_xticks(
         np.arange(len(param2_values)),
@@ -739,14 +739,14 @@ def plot_heatmap_on_ax(
 
     ax.tick_params(
         axis="both",
-        right="E" in pos,
-        left="W" in pos,
+        right= "E" in pos,
+        left="W" in pos ,
         bottom="S" in pos,
         top="N" in pos,
-        labelbottom="S" in pos,
-        labeltop="N" in pos,
-        labelleft="W" in pos,
-        labelright="E" in pos,
+        labelbottom= "S" in pos,
+        labeltop= "N" in pos,
+        labelleft= "W" in pos,
+        labelright= "E" in pos,
     )
     ax.grid(False)
     return cax
@@ -835,11 +835,7 @@ def grid(
     # colorbar anchor to the left
     ticks = np.linspace(vmin, vmax, 5)
     cb = fig.colorbar(
-        cax,
-        ax=axs[-1, 0:2],
-        orientation="horizontal",
-        aspect=15,
-        ticks=ticks,
+        cax, ax=axs[-1, 0:2], orientation="horizontal", aspect=15, ticks=ticks,
     )
     # # legend with red dot and best hyperparameters
     # cb.ax.legend([plt.scatter([], [], marker='o', color='red')], ['best hyperparameters'], loc='lower center', ncol=2,
@@ -936,8 +932,8 @@ def combined_grid(
             [rename(x) for x in df_agg.index],
             [rename(x) for x in df_agg.columns],
             cmap1,
-            i == 0,
-            i == 0,
+            i==0,
+            i==0,
             pos="NW",
         )
 
@@ -947,32 +943,25 @@ def combined_grid(
         ax.set_anchor("NE")
 
     ticks1 = np.linspace(vmin1, vmax1, 5)
-    # vertical on the right
-    newax1 = fig.add_axes([0.75, 0, 0.3, 1], anchor="N")
+    #vertical on the right
+    newax1 = fig.add_axes([0.75, 0, 0.3, 1], anchor='N')
     newax1.axis("off")
     cb1 = fig.colorbar(
-        cax1,
-        ax=newax1,
-        orientation="vertical",
-        aspect=10,
-        ticks=ticks1,
+        cax1, ax=newax1, orientation="vertical", aspect=10, ticks=ticks1,
     )
     cb1.ax.set_yticklabels([f"{tick:.2f}" for tick in ticks1], fontsize=22)
 
-    # horizontal on the bottom
-    ticks2 = np.linspace(vmin2, vmax2, 5)
-    newax2 = fig.add_axes([0, -0.03, 1, 0.3], anchor="N")
+    #horizontal on the bottom
+    ticks2=np.linspace(vmin2, vmax2, 5)
+    newax2 = fig.add_axes([0, -0.03, 1, 0.3], anchor='N')
     newax2.axis("off")
     cb2 = fig.colorbar(
-        cax2,
-        ax=newax2,
-        orientation="horizontal",
-        aspect=10,
-        ticks=ticks2,
+        cax2, ax=newax2, orientation="horizontal", aspect=10, ticks=ticks2,
     )
     cb2.ax.set_xticklabels([f"{tick:.2f}" for tick in ticks2], fontsize=22)
 
     # add label to color bar
+
 
     return fig
 
