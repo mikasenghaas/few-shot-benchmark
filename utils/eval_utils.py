@@ -811,6 +811,7 @@ def grid(
                 j == n - 1,
                 vmin=vmin,
                 vmax=vmax,
+                pos="NE",
             )
 
             # print labels
