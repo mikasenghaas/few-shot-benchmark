@@ -1,18 +1,9 @@
 \section{Discussion}
 
 % General Benchmark
-The collective analysis of average performance across both datasets underscores the competence 
-of all methods in extracting knowledge from biomedical datasets with limited number of samples per class. 
-Notably, the overall great performance on \texttt{TM} implies that \texttt{SP} poses a more difficult challenge. 
-This discrepancy may stem from variations in the quality of extracted embeddings and potential disparities in the train-test set overlap, 
-particularly when compared to the \texttt{TM} dataset.
+The collective analysis of average performance across both datasets underscores the competence of all methods in extracting knowledge from biomedical datasets with limited number of samples per class. Notably, the \texttt{TM} dataset seems to be more amenable to few-shot learning, with all methods achieving an average accuracy of at least 80\%. In contrast, the \texttt{SP} dataset poses a more challenging task, with all methods averaging below 70\% accuracy. This discrepancy may stem from variations in the quality of extracted embeddings and potential disparities in the the overlap of classes in the training and test sets observed in the \texttt{TM} dataset.
 
-Examining the \texttt{SP} dataset, an intriguing pattern emerges: the incorporation of the SOT module 
-enhances the performance of all methods except for \texttt{B}, where performance sees a notable decline of almost 20\%. 
-This stark drop may be attributed to the inherent simplicity of model \texttt{B}, struggling to grapple with the added complexity introduced by the SOT module. 
-Remarkably, \texttt{B++} experiences a substantial 17\% performance boost with the SOT module, marking the most significant improvement among all methods. 
-This result is surprising given the minimal distinctions between the two methods. 
-Notably, \texttt{B++} normalizes embeddings before the final classification layer, with normalized weights. 
+Examining the \texttt{SP} dataset, an intriguing pattern emerges: the incorporation of the SOT module enhances the performance of all methods except for \texttt{B}, where performance sees a notable decline of almost 20\%. This stark drop may be attributed to the inherent simplicity of model \texttt{B}, struggling to grapple with the added complexity introduced by the SOT module.  Remarkably, \texttt{B++} experiences a substantial 17\% performance boost with the SOT module, marking the most significant improvement among all methods. This result is surprising given the minimal distinctions between the two methods. Notably, \texttt{B++} normalizes embeddings before the final classification layer, with normalized weights. 
 Additionally, it elevates the temperature of the softmax function, fostering greater confidence in model predictions.
 
 Turning attention to the \texttt{TM} dataset, the impact of the SOT module appears marginal for all methods except \texttt{MT}, 

@@ -49,10 +49,10 @@ hydra:
     subdir: ${hydra.job.num}
   sweeper:
     params:
-      train.lr: 0.1,0.01,0.001
+      train.lr: 0.00001
       dataset.backbone.feat_dim: 64, 512, 1024
-      sot.distance: cosine,euclidean
-      sot.ot_reg: 1,0.1,0.01
+      sot.distance: cosine, euclidean
+      sot.ot_reg: 0.01
 
 sot:
   distance: cosine
