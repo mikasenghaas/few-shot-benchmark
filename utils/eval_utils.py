@@ -13,6 +13,8 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.decomposition import PCA
 from sklearn.metrics import confusion_matrix
 
+from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
+
 import sys
 
 sys.path.append("..")
@@ -912,6 +914,26 @@ def combined_grid(
         ax = axs[i][i]
         ax.set_facecolor("white")
         param = params[i]
+        df_agg1 = aggregate(df1, [param, param], metric)[
+            ("eval", "test/acc", metric)
+        ].unstack()
+        df_agg2 = aggregate(df2, [param, param], metric)[
+            ("eval", "test/acc", metric)
+        ].unstack()
+        param1_values = df_agg1.index
+        param2_values = df_agg2.columns
+        # mat  of nans of (df1 param i value count) x (df2 param i value count)
+        mat = np.full((len(param1_values), len(param2_values)), np.nan)
+        plot_heatmap_on_ax(
+            ax,
+            mat,
+            [rename(x) for x in param1_values],
+            [rename(x) for x in param2_values],
+            cmap1,
+            i==0,
+            i==0,
+            pos="NW",
+            )
         ax.set_xlabel(
             rename(param[1]),
             fontsize=22,
@@ -920,22 +942,6 @@ def combined_grid(
             horizontalalignment="center",
         )
         ax.xaxis.set_label_coords(0.5, 0.5)
-        df_agg = (
-            aggregate(df1, [param, param], metric)[
-                ("eval", "test/acc", metric)
-            ].unstack()
-            * np.nan
-        )
-        plot_heatmap_on_ax(
-            ax,
-            df_agg,
-            [rename(x) for x in df_agg.index],
-            [rename(x) for x in df_agg.columns],
-            cmap1,
-            i==0,
-            i==0,
-            pos="NW",
-        )
 
     fig.subplots_adjust(wspace=0.02, hspace=0.02)
 
@@ -956,11 +962,12 @@ def combined_grid(
     newax2 = fig.add_axes([0, -0.03, 1, 0.3], anchor='N')
     newax2.axis("off")
     cb2 = fig.colorbar(
-        cax2, ax=newax2, orientation="horizontal", aspect=10, ticks=ticks2,
+        cax2, ax=newax2, orientation="horizontal", aspect=10, ticks=ticks2
     )
     cb2.ax.set_xticklabels([f"{tick:.2f}" for tick in ticks2], fontsize=22)
 
     # add label to color bar
+
 
 
     return fig
