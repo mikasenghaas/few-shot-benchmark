@@ -591,7 +591,7 @@ def exp2results(df: pd.DataFrame) -> pd.DataFrame:
                 f"${acc:.1f} \pm {ci:.1f}$" if i != sot_best_run_idx else "$\mathbf{" + f"{acc:.1f} \pm {ci:.1f}" + "}$"
                 for i, (acc, ci) in enumerate(zip(sot_test_acc, sot_test_acc_ci))
             ],
-            "Diff": (sot_test_acc - test_acc) / test_acc * 100,
+            "Diff": sot_test_acc - test_acc,
         }
     )
 
@@ -686,6 +686,18 @@ def exp2latex(df: pd.DataFrame) -> str:
         )
     else:
         print("❌ Could not find the row to insert the midrule.")
+
+    # Find \label{tab} and vspace after it
+    search_term = r"\label{tab:tuned-benchmark}"
+    index_to_insert_vspace = latex.find(search_term) + len(search_term)
+    if index_to_insert_vspace != -1:
+        latex = (
+            latex[:index_to_insert_vspace]
+            + "\n\\vspace{3.5pt}"
+            + latex[index_to_insert_vspace:]
+        )
+    else:
+        print("❌ Could not find the row to insert the vspace.")
 
     return latex
 
