@@ -18,16 +18,11 @@ We implement early stopping after five epochs of no improvement in validation ac
 % Backbone feat dim: 64, 512, 1024
 % SOT distance: cosine, euclidean
 % SOT regulariser: 1, .1, .01
-\textbf{Tuning.} Hyperparameter tuning is performed, unless specified otherwise. Tuning includes the learning rate ($\lambda = \{0.1, 0.01, 0.001\}$) for all methods. For models including the SOT module, 
-we adapt the hyperparameter grid proposed by \citeauthor{sot}, namely the regularisation parameter ($\gamma = \{1.0, 0.1, 0.01\}$) ann the choice of distance metric ($\delta = \{cosine, euclidean\}$). 
-In addition, we also ablate the bacbbone's hidden dimension size ($\kappa = \{64, 512, 1024\}$). The hyperparameters are tuned using the validation split of the dataset. 
+\textbf{Tuning.} Hyperparameter tuning is performed for all models that include the SOT module, unless specified otherwise. Tuning includes the learning rate ($\lambda = \{0.1, 0.01, 0.001\}$) for all methods as well as the backbone's hidden dimension size ($\kappa = \{64, 512, 1024\}$). For models including the SOT module, we adapt the hyperparameter grid proposed by \citeauthor{sot}, namely the regularisation parameter ($\gamma = \{1.0, 0.1, 0.01\}$) and the choice of distance metric ($\delta = \{cosine, euclidean\}$). 
 The model demonstrating the best performance on the validation split is evaluated on the test split and reported.
 
-% TODO: Here, we should probably argue for the selection and ranges of our hyper-parameters :(
-
 % Evaluation
-\textbf{Evaluation.} A model performance's is reported through the mean and 95\% confidence interval of the few-shot accuracy, 
-calculated over 600 episodes with each episode utilising five query samples per class.
+\textbf{Evaluation.} A model performance's is reported through the mean and 95\% confidence interval of the few-shot accuracy, calculated over 600 episodes with each episode utilising five query samples per class.
 
 \subsection{Experiments}
 
@@ -37,5 +32,4 @@ we have structured our experiments into two distinct groups. Each group fixes ce
 \textbf{General Benchmark.} This experiment group evaluates models, with and without SOT feature transform, on both datasets in a 5-way-5-shot setting, 
 comprising 20 experiments. The aim is to analyse the influence of the method, dataset, and SOT module on few-shot learning performance.
 
-\textbf{Way-Shot Analysis.} In the second group we investigate the performance in various few-shot learning settings, exploring combinations of n-way ({2, 4, 6, 8, 10}) 
-and n-shot ({1, 5, 10, 15, 20}). Here, we fix the method to \texttt{PN} and the dataset to \texttt{TM}, resulting in 50 experiments.
+\textbf{Way-Shot Analysis.} In the second group we investigate the performance in various few-shot learning settings, exploring combinations of n-way ({2, 4, 6, 8, 10}) and n-shot ({1, 5, 10, 15, 20}). Here, we fix the method to \texttt{MN} and the dataset to \texttt{TM}, resulting in 50 experiments.

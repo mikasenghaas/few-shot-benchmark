@@ -1,7 +1,7 @@
 \section{Discussion}
 
 % General Benchmark
-\textbf{General Benchmark}. The collective analysis of average performance across both datasets underscores the competence 
+The collective analysis of average performance across both datasets underscores the competence 
 of all methods in extracting knowledge from biomedical datasets with limited number of samples per class. 
 Notably, the overall great performance on \texttt{TM} implies that \texttt{SP} poses a more difficult challenge. 
 This discrepancy may stem from variations in the quality of extracted embeddings and potential disparities in the train-test set overlap, 
@@ -20,14 +20,6 @@ where performance sees a modest 5\% increase. Plausible reasoning suggests that,
 methods already achieve a high average performance, limiting the potential for substantial enhancement through the SOT module.
 
 % Way-Shot Analysis
-\textbf{Way-shot analysis} reveals compelling insights. Performance demonstrates a gradual 
-decline, diminishing from approximately 95\% with 2 classes to around 80\% with 10 classes. 
-Notably, the challenge intensifies, widening the confidence interval range. This underscores 
-the increasing importance of support vectors as class count rises.
+The way-shot analysis demonstrates clear trends: With increasing number of classes to distinguish, performance decreases from approximately 95\% with 2 classes to around 80\% with 10 classes. Notably, the challenge intensifies, widening the confidence interval range. This underscores the increasing importance of support vectors as class count rises.
 
-Examining the second plot of Figure \ref{fig:way-shot}, an intriguing observation emerges: 
-possessing more than 5 support vectors doesn't necessarily enhance the model's performance. 
-Importantly, the figure indicates that, across varying class and support vector counts, 
-the \texttt{MN} with SOT module tends to exhibit marginally lower performance on average compared 
-to its counterpart without the module. However, it is crucial to emphasize that the confidence intervals overlap, 
-making the observed difference statistically insignificant.
+Examining the second plot of Figure \ref{fig:way-shot}, an intriguing observation emerges:  possessing more than 5 support vectors doesn't necessarily enhance the model's performance.  Importantly, the figure indicates that, across varying class and support vector counts, the \texttt{MN} with SOT module tends to exhibit marginally lower performance on average compared  to its counterpart without the module. 
