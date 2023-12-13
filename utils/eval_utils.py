@@ -956,7 +956,7 @@ def combined_grid(
     cb1 = fig.colorbar(
         cax1, ax=newax1, orientation="vertical", aspect=10, ticks=ticks1,
     )
-    cb1.ax.set_yticklabels([f"{tick:.2f}" for tick in ticks1], fontsize=22)
+    cb1.ax.set_yticklabels([f"{tick:.0f}" for tick in ticks1], fontsize=22)
 
     #horizontal on the bottom
     ticks2=np.linspace(vmin2, vmax2, 5)
@@ -965,11 +965,7 @@ def combined_grid(
     cb2 = fig.colorbar(
         cax2, ax=newax2, orientation="horizontal", aspect=10, ticks=ticks2
     )
-    cb2.ax.set_xticklabels([f"{tick:.2f}" for tick in ticks2], fontsize=22)
-
-    # add label to color bar
-
-
+    cb2.ax.set_xticklabels([f"{tick:.0f}" for tick in ticks2], fontsize=22)
 
     return fig
 
