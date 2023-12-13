@@ -24,3 +24,25 @@ The dataset is divided into three splits with no overlap in the targets.
 
 % TODO: Get more clarity on gene ontology (GO) annotations
 % TODO: Understand why the classes that we get don't match the ones in the project presentation
+
+\begin{table}[h]
+    \centering
+    \caption{\textbf{Dataset Statistics.} The table shows the number of samples and targets in each split of the two datasets.}
+    \vspace{5pt}
+    \label{tab:data}
+    \begin{tabular}{lllll}
+        \toprule
+        & \textbf{Split} & \textbf{\#Samples} (\%) & \textbf{\#Targets} & \textbf{Overlap} \\
+        \midrule
+        \multirow{3}{*}{\texttt{TM}} 
+        & Train. & 65,846 (62\%) & 59 & N/A \\
+        & Val. & 15,031 (14\%) & 47 & 10 \\
+        & Test. & 25,083 (24\%) & 37 & 4 \\
+        \\
+        \multirow{3}{*}{\texttt{SP}} 
+        & Train. & 12,141 (85\%) & 636 & N/A \\
+        & Val. & 1,407 (10\%) & 159 & 0 \\
+        & Test. & 703 (5\%) & 89 & 0 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
