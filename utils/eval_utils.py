@@ -621,8 +621,8 @@ def exp2latex(df: pd.DataFrame) -> str:
     # Style the results
     df_styled = (
         df.style.format(precision=1)
-        .map(lambda x: "font-weight: bold" if x > 0 else "", subset=["Diff"])
-        .map(lambda x: "color: red" if x < 0 else "color: teal", subset=["Diff"])
+        .applymap(lambda x: "font-weight: bold" if x > 0 else "", subset=["Diff"])
+        .applymap(lambda x: "color: red" if x < 0 else "color: teal", subset=["Diff"])
     )
 
     # Define the caption
@@ -817,7 +817,7 @@ def grid(
                 axs[i][j - 1].set_xlabel(
                     rename(param2[1]), fontsize=22, fontweight="bold"
                 )
-                #position the label a bit down
+                # position the label a bit down
                 if j != n - 1:
                     axs[i][j - 1].xaxis.set_label_coords(0.5, -0.3)
                 if i == 0:
@@ -826,7 +826,6 @@ def grid(
                     )
 
                     axs[i][j - 1].yaxis.set_label_coords(-0.2, 0.4)
-
 
     fig.subplots_adjust(wspace=0.02, hspace=0.02)
 
