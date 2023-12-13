@@ -14,24 +14,24 @@ Models without the SOT module reach an average accuracy of 88\% on the \texttt{T
 % SP: (64.7 + 64.5 + 67.2 + 70.0 + 66.6)/5 = 66.6
 Models incorporating the SOT module exhibit enhanced accuracy, achieving 90\% and 67\% average accuracy on the \texttt{TM} and \texttt{SP} dataset. All models benefit from the inclusion of the SOT feature transform module, except for \texttt{B} on \texttt{SP}. 
 
-Notably, \texttt{MN} on \texttt{SP} demonstrates the most significant gain with SOT: from a lowest accuracy of 55\% to the highest at 70\%. The addition of the SOT module increases the peak accuracy by 0.9 percentage points on \texttt{SP} and 2.2 on \texttt{TM}.
+The addition of the SOT module increases the peak accuracy by 0.9 percentage points on \texttt{SP} and 2.2 on \texttt{TM}. Both achieved by \texttt{MN} with 70\% and 93\% accuracy, respectively.
 
 \begin{figure}[h!]
     \centering
     \includegraphics[width=1\columnwidth]{figures/hparams-interaction-combined.png}
-    \caption{\textbf{Hyperparameter Ablation.} Average test accuracies on the \texttt{SP} dataset for all pairs of hyperparameter settings for \texttt{SP} in blue (bottom left) and \texttt{TM} in green (top right).}
+    \caption{\textbf{Hyperparameter Ablation.} Average test accuracies on the \texttt{SP} dataset for all pairs of hyperparameter settings for \texttt{SP} in blue (bottom left) and \texttt{TM} in green (top right). The grey areas were not explored during tuning.}
     \label{fig:hparams-swissprot-grid}
 \end{figure}
 
 \textbf{Hyperparameter Ablation.} Figure~\ref{fig:hparams-swissprot-grid} shows the pair-wise interactions between all tuned hyperparameters for both datasets separately. We add a column for the methods to study how they react to certain hyperparameters configurations. 
 
 The plots indicate a clear trend across all methods and datasets regarding the SOT hyperparameters: We find that using the cosine distance metric and regularisation with $\gamma = 0.1$ consistently yields the best performance. 
-Furthermore, we find that the choice of the learning rate has a significant impact on the performance of all methods. \texttt{B}, \texttt{B++} and \texttt{MN} generally prefer lower learning rates of $\lambda=1e^{-4}$, while \texttt{MAML} prefers high learning rates of $\lambda=1e^{-1}$. \texttt{PN}'s performance is robust to the choice of learning rate showing no significant variation across tuning runs.
-Finally, the plot reveals that \texttt{MN}, \texttt{PN}, and \texttt{MAML} are generally more robust to the choice of hyperparameters, yielding higher mean accuracies across tuning runs, while  \texttt{B++} was found especially sensitive. Despite being the best performing method on \texttt{SP}, its mean accuracy is lower in the tuning runs.
+Furthermore, we find that the choice of the learning rate has a significant impact on the performance of all methods. \texttt{B}, \texttt{B++} and \texttt{MN} generally prefer lower learning rates, while \texttt{MAML} in contrast prefers higher learning rates. \texttt{PN}'s performance is robust to the choice of learning rate showing no significant variation across tuning runs.
+Finally, the plot reveals that \texttt{MN}, \texttt{PN}, and \texttt{MAML} are generally more robust to the choice of hyperparameters, yielding higher mean accuracies across tuning runs, while  \texttt{B++} was found especially sensitive. 
 
 
 
-\textbf{Way-Shot Analysis.} Figure~\ref{fig:way-shot} illustrates \texttt{PN}'s way-shot analysis on the TM dataset, comparing scenarios with and without the SOT module. The left subplot depicts test accuracy versus the number of classes (ways), while the right subplot relates accuracy to the number of samples per class (shots). In both SOT and non-SOT contexts, a consistent trend emerges: accuracy diminishes linearly with more classes and grows with additional samples per class up to some limit. Notably, exceeding ten samples per class yields no substantial accuracy gains. As expected, the model's performance with the SOT module is consistently higher for higher numbers of classes and samples.
+\textbf{Way-Shot Analysis.} Figure~\ref{fig:way-shot} illustrates \texttt{PN}'s way-shot analysis on the TM dataset, comparing scenarios with and without the SOT module. The left subplot depicts test accuracy versus the number of classes (ways), while the right subplot relates accuracy to the number of samples per class (shots). In both SOT and non-SOT contexts, a consistent trend emerges: accuracy diminishes linearly with more classes and grows with additional samples per class up to some limit. Notably, having access to more than ten samples per class yields no substantial accuracy gains. As expected, the model's performance with the SOT module is consistently higher for higher numbers of classes and samples.
 
 \begin{figure}[h!]
     \centering

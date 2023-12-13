@@ -1,10 +1,10 @@
 \section{Discussion}
 
 % General Benchmark
-Our analysis underscores the competence of all methods in extracting knowledge from few-shot biomedical datasets. Notably, the \texttt{TM} dataset seems to be more amenable to few-shot learning, with all methods achieving an average accuracy of at least 80\%. In contrast, the \texttt{SP} dataset poses a more challenging task, with the highest performance achieved being 70\% accuracy. This discrepancy may stem from variations in the quality of the features or the potential disparities in the the overlap of classes in the training and test sets observed in the \texttt{TM} dataset.
+Our analysis underscores the competence of all methods in extracting knowledge from few-shot biomedical datasets. Notably, the \texttt{TM} dataset seems to be more amenable to few-shot learning, with all methods achieving an accuracy of at least 80\%. In contrast, the \texttt{SP} dataset poses a more challenging task, with the highest performance achieved being 70\% accuracy. This discrepancy may stem from variations in the quality of the features or the potential disparities in the overlap of classes in the training and test sets observed in the \texttt{TM} dataset.
 
 % Hyperparameter Ablation
-Across almost methods and few-shot settings examined, the SOT module consistently enhances performance. This is in line with the claims and empirical findings of the original paper, making SOT a model-agnostic plug-in module with potential to improve performance in a wide range of few-shot learning tasks with little added computational overhead.
+Across almost all methods and few-shot settings examined, the SOT module consistently enhances performance. This is in line with the claims and empirical findings of the original paper, making SOT a model-agnostic plug-in module with potential to improve performance in a wide range of few-shot learning tasks with little added computational overhead.
 
 % Hyperparameter Ablation
 Our study shows conclusive evidence that the SOT module performs best in few-shot classification tasks for a regularisation parameters $\gamma = 0.1$ and using the cosine distance metric. However, careful tuning of other hyper-parameters, such as the learning rate or the size of the hidden dimension of the backbone network, are crucial to achieve peak performance and vary depending on the method and dataset.
