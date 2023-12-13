@@ -1,8 +1,3 @@
 \begin{abstract}
-    Learning from few samples remains a major challenge in machine learning, especially in biomedical tasks were data availability is often a limiting factor. 
-    Our study conducts a comprehensive evaluation of prominent few-shot learning algorithms, including Baseline, Matching Networks, Prototypical Networks and MAML, 
-    applied to two biomedical tasks adapted for few-shot learning: single-cell type prediction using the Tabula Muris dataset and protein function prediction using the 
-    \nobreak{SwissProt} dataset. Our results demonstrate the robustness of these algorithms in learning effective representations even from limited biomedical data. 
-    % No longer applies, wait till the new experiments are done
-    % Notably, employing the transductive SOT feature transform combined with meta-learners emerged as a highly effective approach, facilitating precise knowledge transfer.
+    Our study rigorously evaluates prominent few-shot learning algorithms, including Baseline, Matching Networks, Prototypical Networks, and MAML, in two few-shot classification tasks based on the Tabula Muris and SwissProt datasets. All algorithms demonstrate substantial efficacy, with the best performing algorithms achieving 69.1\% and 91.3\% accuracy on the SwissProt and Tabula Muris datasets, respectively. Additionally, we found that incorporating the Self-Optimal Transport (SOT) feature transform module enhances performance in most settings with minimal computational overhead, increasing the best performance to 70.9\% (+1,8) and 93.5\% (+2,2) on the \nobreak{SwissProt} and Tabula Muris datasets, respectively. \textit{The code and experiments are available on \href{https://github.com/mikasenghaas/few-shot-benchmark}{GitHub} and \href{https://wandb.ai/metameta-learners/few-shot-benchmark}{W\&B}.}
 \end{abstract}

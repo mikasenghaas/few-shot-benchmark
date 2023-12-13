@@ -1,7 +1,6 @@
 \section{Introduction}
 
-Biomedical research often grapples with data scarcity, typically due to high costs of data collection and expert-dependent annotation processes. 
-Traditional machine learning approaches often fall short in these data-limited settings as they require extensive training samples and iterations. 
+Learning from few samples remains a major challenge in machine learning, especially in biomedical tasks were data availability is often a limiting factor due to high costs of data collection and expert-dependent annotation processes. Traditional machine learning approaches often fall short in these data-limited settings as they require extensive training samples and iterations. 
 Few-shot learning algorithms, tailored to discern distinct features from minimal data, offer a promising alternative. 
 This study aims to assess the applicability of such methods in the biomedical domain. We examine four established few-shot learning techniques — Baseline(++)~\cite{baseline}, 
 Matching Networks~\cite{matchingnet}, Prototypical Networks~\cite{protonet}, and Model-Agnostic Meta-Learning (MAML)~\cite{maml} — across two distinct biomedical tasks. 
@@ -9,15 +8,12 @@ The first involves predicting cell types based on gene expression, using the Tab
 from their sequence embeddings, using the SwissProt dataset~\cite{uniprot2019}.
 
 All of the above approaches rely on meaningful embeddings of features. However, a notable challenge arises due to the potential discrepancy in data 
-distributions between samples seen during meta-training and samples of novel classes seen during meta-testing. This discrepancy can result in embeddings that are 
-not fully transferable, leading to suboptimal performance in downstream tasks. Self-Optimal-Transport (SOT)~\cite{sot} is a feature transform module, 
-grounded in probabilistic interpretations, that aims to mitigate this issue. We include the SOT feature transform module in all of the above mentioned few-shot learning methods to 
+distributions between samples seen during meta-training and samples of novel classes seen during meta-testing. This discrepancy may result in embeddings that are 
+not fully transferable, leading to suboptimal performance in downstream tasks. Self-Optimal-Transport (SOT)~\cite{sot} is a feature transform module that aims to mitigate this issue. We include the SOT feature transform module in all of the above mentioned few-shot learning methods to 
 study its effectiveness in the biomedical domain.
 
-In summary, our study presents three primary contributions. First, we train and assess leading few-shot learning algorithms on two unique biomedical tasks. We 
-report the performance of these algorithms on both the original and SOT-transformed features. Second, we explore the relationship between method's performance and
-the number of training samples per class as well as the number of classes. Third, we conduct an ablation on SOT's hyperparameters to understand their impact on
-performance. We hope that our study will serve as a benchmark for future research in the biomedical domain.
+In summary, our study presents three primary contributions. First, we train and assess leading few-shot learning algorithms on two unique biomedical tasks. We report the performance of these algorithms with and without the SOT module. 
+Second, we study the performance in varying few-shot learning settings by differing the number of classes to distinguish and number of samples per class to learn from.
+Third, we conduct an ablation the hyperparameters of all models that include the SOT featurer transform understand their impact on performance. We hope that our study will serve as a benchmark for future research in the biomedical domain.
 
 
-\textit{All code and data to reproduce the experiments is available on \href{https://github.com/mikasenghaas/few-shot-benchmark}{GitHub} and the reported experiments can be accessed on \href{https://wandb.ai/metameta-learners/few-shot-benchmark}{W\&B}.}

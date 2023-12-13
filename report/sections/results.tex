@@ -4,22 +4,23 @@
 Figure~\ref{fig:benchmark-perf} and Table \ref{tab:tuned-benchmark} shows the test accuracies for each method with and without the SOT module on both datasets.
 
 % Without SOT:
-% TM: (91.3 + 81.7 + 89.8 + 85.3 + 90)/5 = 87.42
+% TM: (91.3 + 81.7 + 89.8 + 85.3 + 90)/5 = 87.6
 % SP: (69.1 + 55.2 + 61.5 + 65.4 + 64.3)/5 = 63.1
-Models without the SOT module reach an average accuracy of 87\% on the \texttt{TM} dataset and 63\% on the \texttt{SP} dataset. These results generally show that the models are capable of learning from few samples, improving significantly over the random baseline of 20\% accuracy. Furthermore, the \texttt{SP} dataset seems more challenging than the \texttt{TM} dataset. Notably, \texttt{B} outperforms all others in both datasets, whereas \texttt{B++} ranks lowest.
+Models without the SOT module reach an average accuracy of 88\% on the \texttt{TM} dataset and 63\% on the \texttt{SP} dataset. These results generally show that the models are capable of learning from few samples, improving significantly over the random baseline of 20\% accuracy. Peak performances in this group are achieved by \texttt{B} on both datasets, with 91\% and 69\% accuracy, respectively. The results indicate that \texttt{SP} is more challenging than the \texttt{TM} dataset. 
 
 % With SOT:
-% TM: (86.4 + 81.9 + 87.1 + 89.6 + 89.1)/5 = 86.42
-% SP: (55.8 + 65.8 + 64.9 + 68 + 66.4)/5 = 64.58
-Models with the SOT module yield an average accuracy of 86\% on the \texttt{TM} dataset and 65\% on the \texttt{SP} dataset, showing slight variations from non-SOT results. Performance impacts vary among methods: Meta-learners \texttt{MN}, \texttt{PT}, and \texttt{MAML} improve on \texttt{SP} with SOT, but \texttt{B}'s performance decreases. \texttt{MN}, with SOT, excels in both datasets, reaching the highest accuracy of 89\% on \texttt{TM} and 68\% on \texttt{SP}.
+% TM: (86.4 + 89.8 + 90.9 + 93.5 + 91.6)/5 = 90.4
+% SP: (56.7 + 70.9 + 67.2 + 68.4 + 66.6)/5 = 65.9
+Models incorporating the SOT module exhibit enhanced accuracy, achieving 90\% and 66\% average accuracy on the \texttt{TM} and \texttt{SP} dataset. While \texttt{MN}, \texttt{PN}, \texttt{MAML}, and \texttt{B++} show improved performance on \texttt{SP} when using SOT, \texttt{B} experiences a decline. Notably, \texttt{MN} on \texttt{SP} demonstrates the most significant gain with SOT: from a lowest accuracy of 55\% to the highest at 71\%. The addition of the SOT module increases the peak accuracy by 1.8 percentage points on \texttt{SP} and 2.2 on \texttt{TM}.
 
-\textbf{Hyperparameter Ablation.} Figure~\ref{fig:hparams-swissprot-grid} shows the pair-wise interactions between all tuned hyper-parameters, methods and the inclusion of the SOT module on the \texttt{SP} data.
+\textbf{Hyperparameter Ablation.} Figure~\ref{fig:hparams-swissprot-grid} shows the pair-wise interactions between all tuned hyperparameters. We also add a column for the methods to study how they react to certain hyper-parameters. 
 
-% TODO: Include section about ablation of tuned hyper-parameters
+The plots indicate a clear trend across all methods regarding the SOT hype-parameters: We find that using $\delta = cosine$ as a distance metric and regularisation with $\gamma = 0.1$ consistently yields the best performance. 
+Furthermore, we find that all methods generally prefer lower learning rates of $\lambda=0.001$, especially in combination with a larger hidden dimension in the layers of the backbone. Finally, the plot reveals that \texttt{MN}, \texttt{PN}, and \texttt{MAML} are more robust to the choice of hyperparameters, yielding higher mean accuracies across tuning runs, while  \texttt{B++} was found especially sensitive. Despite being the best performing method on \texttt{SP}, its mean accuracy is lower in the tuning runs.
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=1\columnwidth]{figures/hparams-interaction-combined.png}
+    \includegraphics[width=1\columnwidth]{figures/hparams-interaction.png}
     \caption{\textbf{Hyperparameter Ablation.} Test accuracies on the \texttt{SP} dataset for all pairs of hyperparameter settings.}
     \label{fig:hparams-swissprot-grid}
 \end{figure}

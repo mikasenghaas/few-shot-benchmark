@@ -1,15 +1,10 @@
-\section{Dataset}
-
-% Introduce datasets
-% This project utilises two biomedical datasets adapted for few-shot learning. 
-
-% TODO: (Optional) Figure about difficulty of the task by showing PCA features of samples within k episodes (visually explore the class separation)
+\section{Data}
 
 % Tabula Muris
 The first dataset, \textbf{Tabula Muris}~\cite{tabula2018} (denoted as \texttt{TM}), comprises over 100,000 mouse cells' gene expression 
 data and annotations about the cell ontology class (cell type). The task is to predict the cell type based on the gene expression data. 
 To address the sparsity and skewed distribution of raw gene expressions, preprocessing included gene and cell filtering, log-transformation, 
-and mean normalization, with zero imputation. Post-processing, the dataset features 105,960 cells across 125 cell types.
+and mean normalisation, with zero imputation. Post-processing, the dataset features 105,960 cells across 125 cell types.
 
 For the few-shot learning task, the focus is on generalisation across different tissues. The dataset is divided into training, validation, and testing splits, 
 each representing distinct tissue types: 15 for training and four each for validation and testing. Despite some overlap in cell types across tissues this structure 
@@ -21,28 +16,3 @@ featuring 14,251 sequences, enriched with comprehensive information on their fun
 This project utilises pre-computed sequence embeddings obtained from ESM-2~\cite{esm-2}, a state-of-the-art protein language model, as input data. 
 The goal is to predict proteins' functions. In total, there are 884 unique annotated protein functions. 
 The dataset is divided into three splits with no overlap in the targets.
-
-% TODO: Get more clarity on gene ontology (GO) annotations
-% TODO: Understand why the classes that we get don't match the ones in the project presentation
-
-\begin{table}[h]
-    \centering
-    \caption{\textbf{Dataset Statistics.} The table shows the number of samples and targets in each split of the two datasets.}
-    \vspace{5pt}
-    \label{tab:data}
-    \begin{tabular}{lllll}
-        \toprule
-        & \textbf{Split} & \textbf{\#Samples} (\%) & \textbf{\#Targets} & \textbf{Overlap} \\
-        \midrule
-        \multirow{3}{*}{\texttt{TM}} 
-        & Train. & 65,846 (62\%) & 59 & N/A \\
-        & Val. & 15,031 (14\%) & 47 & 10 \\
-        & Test. & 25,083 (24\%) & 37 & 4 \\
-        \\
-        \multirow{3}{*}{\texttt{SP}} 
-        & Train. & 12,141 (85\%) & 636 & N/A \\
-        & Val. & 1,407 (10\%) & 159 & 0 \\
-        & Test. & 703 (5\%) & 89 & 0 \\
-        \bottomrule
-    \end{tabular}
-\end{table}

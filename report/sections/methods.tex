@@ -1,21 +1,11 @@
 \section{Methods}
 
-
 Few-shot learning algorithms can be classified into two main categories: \textit{Transfer learning} involves a two-phase process of pre-training on a large dataset to learn general data representation, 
 followed by fine-tuning on the target task with limited data. \textit{Meta-learning}, conversely, leverages past experiences from a series of related tasks to efficiently tackle a new task with sparse data. 
 These algorithms undergo meta-training, where the model encounters various tasks, mimicking the target few-shot learning scenario. Each task comprises randomly chosen support and query samples from identical class sets, 
 training the model to adapt to support samples and classify query samples.
 
-In the following we describe the high-level idea of each method. For details on the methods please refer to the original papers.
-
-% The algorithms for few-shot learning can be broadly differentiated in two categories: \textit{transfer learning} and \textit{meta-learning}.
-% 
-% Transfer learning can be divided into two phases: pre-training and fine-tuning. During pre-training a model is trained on a large dataset that is related to the target task, aiming to learn a general representation of the data. In the fine-tuning stage, the pre-trained model is trained for a few epochs on the target task with limited data. Models in this learning paradigm aim to learn a direct mapping from input features to target labels. This approach is exemplified by the Baseline method.
-% 
-% 
-
-% TODO: Decide if we want to introduce inductive/ transductive
-% Meta-learning algorithms can generally be differentiated into \textit{inductive} and \textit{transductive} methods. Transductive methods use information about the query samples during training, while inductive methods do not. This differentiation will be important in our discussion about the effect of the SOT feature transform on the different methods.
+In the following we describe the high-level idea of all methods considered within this study. For more details on the methods please refer to the original papers.
 
 The \textbf{Baseline}~\cite{baseline} model implements the fine-tuning paradigm. During meta-testing, the model is fine-tuned on support samples and then classifies query samples. Within this study, we consider two variants of the trainable classification head - one learns a traditional linear and the other a cosine similarity layer. We refer to these as Baseline (\texttt{B}) and Baseline++ (\texttt{B++}), respectively.
 
@@ -29,62 +19,13 @@ Finally, \textbf{Model Agnostic Meta Learning}~\cite{maml} (\texttt{MAML}) is an
 
 % TODO: Mention problems with reduced dimensionality of SOT embeddings.
 
-The \textbf{Self-Optimal Transport} (SOT)~\cite{sot} feature transform is a parameterless and fully differentiable method for transforming feature vectors. 
-SOT embeddings are notable for their interpretability, permutation equivariance, and, most importantly, potential to upgrade a set of features to facilitate 
-downstream matching or grouping related tasks, as encountered frequently in few-shot learning settings.
+The \textbf{Self-Optimal Transport} (SOT)~\cite{sot} feature transform is a parameterless and fully differentiable method for transforming feature vectors. SOT embeddings are notable for their interpretability and potential to upgrade a set of features to facilitate  downstream matching or grouping related tasks, as encountered frequently in few-shot learning settings.
 
 SOT fundamentally utilises Optimal Transport (OT) on a square distance matrix (e.g. cosine similarity matrix) of input features, 
 leading to embeddings that reflect the \textit{direct} similarity and \textit{third-party} agreement of samples to each other. 
 Mathematically, SOT is a function \(T: \mathbb{R}^{n \times d} \rightarrow \mathbb{R}^{n \times n}\) that maps \(n\) samples in \(d\)-dimensions to a 
-re-embedded SOT vector in \(n\)-dimensions. The SOT embeddings are computed from an iterative optimisation algorithm known as the Sinkhorn-Knopp 
+re-embedded SOT vectors in \(n\)-dimensions. The SOT embeddings are computed from an iterative optimisation algorithm known as the Sinkhorn-Knopp 
 algorithm~\cite{sinkhorn-knopp} that solves a regularised version of the OT problem.
 
-In few-shot learning contexts, SOT helps align previously independently embedded support and query samples by jointly embedding them according to their similarities to each other - an example of \textit{transductivity}. 
-The SOT feature transform is used in state-of-the-art methods in common few-shot learning benchmarks~\cite{sot}. Within our study we employ the SOT feature transform module on the embeddings obtained from the backbone network.
-
-% For an input feature matrix \(X \in \mathbb{R}^{n \times d}\), SOT calculates the squared cosine pairwise distance matrix \(D = XX^T\). It then applies the Sinkhorn-Knopp algorithm to derive the optimal transport plan matrix \(W \in \mathbb{R}^{n \times n}\) for a modified distance matrix \(D_{\infty}\) which 
-% is the distance matrix \(D\) with a very large scalar \(\alpha\) replacing each of the entries on its diagonal. 
-
-
-% Outline
-% 0. High level: 
-% In the second phase of our benchmark study, we enhance each method with a Self-Optimal-Transport (SOT) feature transform module \cite{sot}  to explore its potential in improving overall classification performance.  SOT, operating through pair-wise cosine distance computations, works towards alignment of a given sample with the most similar  samples in the dataset. Consequently, samples from the same class should ideally exhibit similar embeddings, thereby facilitating  subsequent classification. By definition, this effect is particularly advantageous for distance metric-based methods.
-% 1. Cost matrix computation
-% 2. Sinkhorn 
-% The \textbf{Sinkhorn algorithm} is used. It is an iterative procedure that adjusts the elements of a matrix to make its rows and columns sum up to specified target vectors (usually probability distributions). We used a variant that operates in log space for improved numerical stability, especially when dealing with very small or very large numbers. 
-% 3. Important properties - explanatibility, direct and indirect comparison
-% Given an input feature matrix $X \in \mathbb{R}^{n \times d}$ with $n$ samples, each in $d$ dimensions, the OT algorithm computes a transport plan matrix $W \in \mathbb{R}^{n \times n}$, which is a doubly stochastic matrix. The transport plan matrix $W$ is the result of the transform, the final set of features $W$ is obtained by replacing the diagonal entries from $0$s to $1$s. Each row is the re-embedding of the corresponding row in $X$. $W$ is doubly stochastic and symmetric.
-% 
-% The feature set $V$ containing $n$ vectors of dimension $d$ is re-embedded using a transform $T$, to obtain a new set of features $W = T(V)$, where $W \in \mathbb{R}^{n \times n}$. The proposed transform $T: \mathbb{R}^{n \times d} \rightarrow \mathbb{R}^{n \times n}$ acts on the original feature set \( V \) as follows. It begins by computing the squared cosine pairwise distances matrix $D$. $W$ will be computed as the optimal transport plan matrix between the $n$-dimensional all-ones vector $\mathbf{1}_n$ and itself, under the cost matrix $D_{\infty}$, which is the distance matrix $D$  with a very large scalar $\alpha$ replacing each of the entries on its diagonal. We used $\alpha=1000$ as it was the constant the authors of SOT also used.
-% 
-% Each new embedded feature vector created by the SOT encodes similarities to all other feature vectors, thereby improving the performance of the classifier.  
-% 
-% transform that can be used to improve the performance of a classifier.
-
-
-% \( W \) is defined to be the doubly-stochastic matrix, that is the minimizes Frobenius dot-product between $D_{\infty}$ and $W$. To compute $W$, authors use the highly efficient \textbf{Sinkhorn-Knopp} method, which is an iterative scheme that optimizes an entropy-regularized version of the problem, where each iteration takes $\Theta(n^2)$. We used $10$ Sinkhorn iterations as it was also used by the authors.
- 
-% The transport-plan matrix $W$ is the result of the transform, the final set of features $W$ is obtained by replacing the diagonal entries from $0$s to $1$s. Each row is the re-embedding of the corresponding row in $V$. $W$ is doubly stochastic and symmetric.
-% 
-% In the $i$-th feature vector, the $j$-th value represents the relative belief that feature vectors $i$ and $j$ belong to the same `class'. The reason behind this interpretation falls outside the scope of this paper. However, for a more comprehensive understanding and further details, please refer to the original paper \cite{sot}.
-% 
-% An important property of the SOT embedding is that by comparing embedded vectors $w_i$ and $w_j$ we acquire both direct and indirect information about the similarity between the features. This can be seen if we look at the different coordinates $k$ of the absolute difference vector $a=|w_i - w_j|$. When $k\in\{i,j\}$, we have $a_k = 1 - w_{ij} = 1 - w_{ji}$. If \( a_k \) is small, it means the features are directly similar.
-% 
-% When $k \notin \{i,j\}$, we have $a_k = |wik - wjk|$. If $a_k$ is small it means that features $i$ and $j$ have similar beliefs or relationships with feature $k$. They are indirectly similar through their common relationship with the $k$-th feature vector.
-
-
-% Old:
-% use as part of their adaption process query samples' features. This is indeed possible only in meta learning setting where we have access to the features of the samples we later evaluate our model on, in contrast to the classical batch learning.
-
-% aims to teach the model to be able to learn quickly. Therefore, during the training, in each epoch, the model is presented with the given number of episodes where each episode can be viewed as a different task. Given that in our work, we solely focus on classification, each episode consists of the given number of classes (\texttt{n-way}) where for each class we have certain number of support samples (\texttt{n-shot}) and query samples. During inference, the model is evaluated on its ability to adapt to newly presented tasks.  It first uses the support vectors from the episode to adapt to the task at hand and then its performance is evaluated based on the query samples. The final performance of a model is a mean score across all episodes which should reflect its ability to adapt quickly to new tasks, even with a small amount of samples.
- 
-% The methods presented in our work use two types of learning. In supervised learning, the objective of the model is to learn the general mapping from the observed samples seen during training to the given task and then be able to apply this knowledge on unseen samples during inference. However, in practice, there is often a need to use the model on a slightly different task than it was initially trained on. One possible solution is to fine tune the model on the subset of data for the new task. This, however, depending on the difficulty of the task might require large amount of labeled data. 
-% 
-% This motivated research in meta learning where the focus is towards teaching the model to be able to learn quickly. Therefore, during the training, in each epoch, the model is presented with the given number of episodes where each episode can be viewed as a different task. Given that in our work, we solely focus on classification, each episode consists of the given number of classes (\texttt{n-way}) where for each class we have certain number of support samples (\texttt{n-shot}) and query samples. During inference, the model is evaluated on its ability to adapt to newly presented tasks.  It first uses the support vectors from the episode to adapt to the task at hand and then its performance is evaluated based on the query samples. The final performance of a model is a mean score across all episodes which should reflect its ability to adapt quickly to new tasks, even with a small amount of samples.
-
-% takes in contrast to the previous two methods metric driven approach. \texttt{MAML} focuses on learning an effective initialization of weights during training. Specifically, there are two kinds of weights in \texttt{MAML}. Slow weights are regular model weights which are being updated after a predefined number of episodes. Conversely, fast weights are initialised from the existing slow weights for each episode, and then based on episode's support samples, the fast weights are adapted for a predefined number of steps. After the adaptation procedure, the loss computed based on model's prediction on episodes' query samples is computed. This is repeated for predefined number of episodes after which the slow weights are updated based on query samples loss.
-
-
-% The primary strategies for few-shot classification can be categorised into two approaches. The first involves training a classifier from scratch or adapting pre-trained models through fine-tuning. This approach is exemplified by Model-Agnostic Meta-Learning (MAML)~\cite{maml}, which extends beyond basic fine-tuning by integrating a meta-training phase. This phase is designed to optimise weight initialisation, such that the model can generalise well to any downstream few-shot classification task.
-
-% The second category encompasses metric-based methods, which focus on learning discriminative embeddings through meta-learning. Unlike the first approach, these methods do not directly map features to targets. Instead, they use the learned embeddings to classify new instances based on simple distance-based heuristics. Notable methods in this category include Matching Networks~\cite{matchingnet} and Prototypical Networks (ProtoNet)~\cite{protonet}.
+In few-shot learning contexts, SOT helps align independently embedded support and query samples by jointly embedding them according to their similarities to each other - an example of \textit{transductivity}. 
+The SOT feature transform is used in state-of-the-art methods in common few-shot learning benchmarks~\cite{sot}. Within our study we employ the SOT feature transform module on the embeddings obtained from the backbone network. Critically, we shuffle the query samples before the forward-pass to avoid learning a trivial mapping from sample position to class label.
