@@ -14,8 +14,7 @@ The network has two hidden layers, with hidden dimensions being tuned for each e
 We implement early stopping after five epochs of no improvement in validation accuracy. 
 
 % Hyperparameter tuning
-\textbf{Tuning.} Hyperparameter tuning is performed for all models that include the SOT module, unless specified otherwise. Tuning includes the learning rate ($\lambda = \{0.1, 0.01, 0.001\}$) for all methods as well as the backbone's hidden dimension size ($\kappa = \{64, 512, 1024\}$). For models including the SOT module, we adapt the hyperparameter grid of \citeauthor{sot}, namely the regularisation parameter ($\gamma = \{1.0, 0.1, 0.01\}$) and the choice of distance metric ($\delta = \{cosine, euclidean\}$). 
-The model demonstrating the best performance on the validation split is evaluated on the test split and reported.
+\textbf{Tuning.} Hyperparameter tuning is performed for all models that include the SOT module, unless specified otherwise. Tuning includes the learning rate \nobreak{($\lambda = 1e^{-x} \forall\ x \in [-5, -1]$)} for all methods as well as the backbone's hidden dimension size ($\kappa = \{64, 512, 1024\}$). For models including the SOT module, we adapt the hyperparameter grid of \citeauthor{sot}, namely the regularisation parameter ($\gamma = \{1.0, 0.1, 0.01\}$) and the choice of distance metric ($\delta = \{cosine, euclidean\}$). Whenever it was clear, that further grid search would not yield better results, we stopped the tuning process. The model demonstrating the best performance on the validation split is evaluated on the test split and reported.
 
 % Evaluation
 \textbf{Evaluation.} A model performance's is reported through the mean and 95\% confidence interval of the few-shot accuracy, calculated over 600 episodes with each episode utilising five query samples per class.

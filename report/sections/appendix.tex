@@ -1,5 +1,7 @@
 \section{Appendix}
 
+\subsection{Dataset Statistics}
+
 \begin{table}[h]
     \centering
     \caption{\textbf{Dataset Statistics.} The Table shows the number of samples and targets in each split of the two datasets.}
@@ -21,3 +23,12 @@
         \bottomrule
     \end{tabular}
 \end{table}
+
+\subsection{Way-Shot Analysis Heatmap}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=1\columnwidth]{figures/way-shot-heatmap.png}
+    \caption{\textbf{Way-Shot Analysis Heatmap.} Test accuracy of \texttt{PN} with SOT on the \texttt{TM} for varying numbers of classes and samples per class (left). The right plot shows the difference to the same method without SOT.}
+    \label{fig:way-shot-heatmap}
+\end{figure}
