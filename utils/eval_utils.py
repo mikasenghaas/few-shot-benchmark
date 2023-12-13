@@ -712,19 +712,6 @@ def aggregate(df, param_tuples, metric="mean"):
     return df_agg
 
 
-names = {
-    "lr": "LR",
-    "feat_dim": "Backbone\nDimension",
-    "sot_dist_metric": "SOT\nDistance\nMetric",
-    "use_sot": "SOT",
-    "sot_reg": "SOT\nReg.",
-    "method": "Method",
-    "dataset": "Dataset",
-}
-
-rename = lambda x: names[x] if x in names else x
-
-
 def plot_heatmap_on_ax(
     ax,
     results,
@@ -782,11 +769,20 @@ def calcualte_vs(df_runs, params, metric="mean", vmin=None, vmax=None):
 
 # grid of (n-1 x n-1) plots, n is number of hyperparameters, each plot is a heatmap of mean test acc for different hyperparameter value combinations
 def grid(
-    df_runs, params, metric="mean", cmap="YlGn", vmin=None, vmax=None, figsize=(10, 10)
+    df_runs,
+    params,
+    metric="mean",
+    cmap="YlGn",
+    vmin=None,
+    vmax=None,
+    figsize=(10, 10),
+    rename_dict=None,
 ):
     n = len(params)
     fig, axs = plt.subplots(nrows=n - 1, ncols=n - 1, figsize=figsize)
     fig.tight_layout(pad=3.0)
+
+    rename = lambda x: rename_dict[x] if rename_dict and x in rename_dict else x
 
     vmin, vmax = calcualte_vs(df_runs, params, metric, vmin=vmin, vmax=vmax)
     for i in range(n - 1):
