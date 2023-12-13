@@ -562,7 +562,9 @@ def exp2results(df: pd.DataFrame) -> pd.DataFrame:
     test_acc = df[~df[("config", "use_sot")]][("eval", "test/acc")].values
 
     # Get index of the best run for each method w/ and w/o SOT
-    sot_best_run_idx = df[df[("config", "use_sot")]][("eval", "test/acc")].values.argmax()
+    sot_best_run_idx = df[df[("config", "use_sot")]][
+        ("eval", "test/acc")
+    ].values.argmax()
     best_run_idx = df[~df[("config", "use_sot")]][("eval", "test/acc")].values.argmax()
 
     # Get the confidence intervals
@@ -584,11 +586,15 @@ def exp2results(df: pd.DataFrame) -> pd.DataFrame:
         {
             "Method": methods,
             "w/o SOT": [
-                f"${acc:.1f} \pm {ci:.1f}$" if i != best_run_idx else "$\mathbf{" + f"{acc:.1f} \pm {ci:.1f}" + "}$" 
+                f"${acc:.1f} \pm {ci:.1f}$"
+                if i != best_run_idx
+                else "$\mathbf{" + f"{acc:.1f} \pm {ci:.1f}" + "}$"
                 for i, (acc, ci) in enumerate(zip(test_acc, test_acc_ci))
             ],
             "w/ SOT": [
-                f"${acc:.1f} \pm {ci:.1f}$" if i != sot_best_run_idx else "$\mathbf{" + f"{acc:.1f} \pm {ci:.1f}" + "}$"
+                f"${acc:.1f} \pm {ci:.1f}$"
+                if i != sot_best_run_idx
+                else "$\mathbf{" + f"{acc:.1f} \pm {ci:.1f}" + "}$"
                 for i, (acc, ci) in enumerate(zip(sot_test_acc, sot_test_acc_ci))
             ],
             "Diff": (sot_test_acc - test_acc) / test_acc * 100,
@@ -613,10 +619,10 @@ def exp2latex(df: pd.DataFrame) -> str:
     """
 
     # Style the results
-    df_styled = df.style.format(precision=1).map(
-        lambda x: "font-weight: bold" if x > 0 else "", subset=["Diff"]
-    ).map(
-        lambda x: "color: red" if x < 0 else "color: teal", subset=["Diff"]
+    df_styled = (
+        df.style.format(precision=1)
+        .map(lambda x: "font-weight: bold" if x > 0 else "", subset=["Diff"])
+        .map(lambda x: "color: red" if x < 0 else "color: teal", subset=["Diff"])
     )
 
     # Define the caption
@@ -674,7 +680,6 @@ def exp2latex(df: pd.DataFrame) -> str:
     else:
         print("❌ Could not find the row to insert centering.")
 
-
     # Insert test accuracy to the top of the table
     search_term = r"\toprule"
     top_rule_index = latex.find(search_term) + len(search_term)
@@ -696,11 +701,11 @@ def aggregate(df, param_tuples, metric="mean"):
 
 
 names = {
-    "lr": "Learning Rate",
+    "lr": "LR",
     "feat_dim": "Backbone\nDimension",
-    "sot_dist_metric": "SOT Distance\nMetric",
+    "sot_dist_metric": "SOT\nDistance\nMetric",
     "use_sot": "SOT",
-    "sot_reg": "SOT\nRegularization",
+    "sot_reg": "SOT\nReg.",
     "method": "Method",
     "dataset": "Dataset",
 }
@@ -764,9 +769,11 @@ def calcualte_vs(df_runs, params, metric="mean", vmin=None, vmax=None):
 
 
 # grid of (n-1 x n-1) plots, n is number of hyperparameters, each plot is a heatmap of mean test acc for different hyperparameter value combinations
-def grid(df_runs, params, metric="mean", cmap="YlGn", vmin=None, vmax=None):
+def grid(
+    df_runs, params, metric="mean", cmap="YlGn", vmin=None, vmax=None, figsize=(10, 10)
+):
     n = len(params)
-    fig, axs = plt.subplots(nrows=n - 1, ncols=n - 1, figsize=(15, 10))
+    fig, axs = plt.subplots(nrows=n - 1, ncols=n - 1, figsize=figsize)
     fig.tight_layout(pad=3.0)
 
     vmin, vmax = calcualte_vs(df_runs, params, metric, vmin=vmin, vmax=vmax)
@@ -798,9 +805,16 @@ def grid(df_runs, params, metric="mean", cmap="YlGn", vmin=None, vmax=None):
                 axs[i][j - 1].set_xlabel(
                     rename(param2[1]), fontsize=22, fontweight="bold"
                 )
-                axs[i][j - 1].set_ylabel(
-                    rename(param1[1]), fontsize=22, fontweight="bold"
-                )
+                #position the label a bit down
+                if j != n - 1:
+                    axs[i][j - 1].xaxis.set_label_coords(0.5, -0.3)
+                if i == 0:
+                    axs[i][j - 1].set_ylabel(
+                        rename(param1[1]), fontsize=22, fontweight="bold", rotation=0
+                    )
+
+                    axs[i][j - 1].yaxis.set_label_coords(-0.2, 0.4)
+
 
     fig.subplots_adjust(wspace=0.02, hspace=0.02)
 
@@ -817,6 +831,7 @@ def grid(df_runs, params, metric="mean", cmap="YlGn", vmin=None, vmax=None):
     #              fontsize=16, frameon=False, bbox_to_anchor=(0.5, 1))
     # colorbar ticks
     cb.ax.set_xticklabels([f"{tick:.2f}" for tick in ticks], fontsize=22)
+    return fig
 
 
 def visualise_hparams(df, dataset=None, method=None, hparam="lr", ax=None):
