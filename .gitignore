@@ -8,6 +8,8 @@ mika.*
 
 # TeX
 /report/build
+/report/figures
+/report/tables
 
 
 # Byte-compiled / optimized / DLL files
