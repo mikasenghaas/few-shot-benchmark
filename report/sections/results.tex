@@ -1,7 +1,7 @@
 \section{Results}
 
 
-Figure~\ref{fig:benchmark-perf} and Table \ref{tab:tuned-benchmark} shows the test accuracies for each method with and without the SOT module on both datasets. 
+Figure~\ref{fig:benchmark-perf} and Table \ref{tab:tuned-benchmark} shows the test accuracies for each method with and without the SOT module on both datasets.
 
 % Without SOT:
 % TM: (91.3 + 81.7 + 89.8 + 85 + 90)/5 = 87.56
@@ -13,13 +13,13 @@ Models without the SOT module reach an average accuracy of 87\% on the \texttt{T
 % SP: (55.8 + 65.8 + 64.9 + 68 + 66.4)/5 = 64.58
 Models with the SOT module yield an average accuracy of 86\% on the \texttt{TM} dataset and 65\% on the \texttt{SP} dataset, showing slight variations from non-SOT results. Performance impacts vary among methods: Meta-learners \texttt{MN}, \texttt{PT}, and \texttt{MAML} improve on \texttt{SP} with SOT, but \texttt{B}'s performance decreases. \texttt{MN}, with SOT, excels in both datasets, reaching the highest accuracy of 89\% on \texttt{TM} and 68\% on \texttt{SP}.
 
-\textbf{Hyperparameter Ablation.} Figure~\ref{fig:hparams-swissprot-grid} shows the pair-wise interactions between all tuned hyper-parameters, methods and the inclusion of the SOT module on the \texttt{SP} data. 
+\textbf{Hyperparameter Ablation.} Figure~\ref{fig:hparams-swissprot-grid} shows the pair-wise interactions between all tuned hyper-parameters, methods and the inclusion of the SOT module on the \texttt{SP} data.
 
 % TODO: Include section about ablation of tuned hyper-parameters
 
 \begin{figure}[h!]
     \centering
-    \includegraphics[width=1\columnwidth]{figures/hparams-swissprot-grid.pdf}
+    \includegraphics[width=1\columnwidth]{figures/hparams-interaction.png}
     \caption{\textbf{Hyperparameter Ablation.} Test accuracies on the \texttt{SP} dataset for all pairs of hyperparameter settings.}
     \label{fig:hparams-swissprot-grid}
 \end{figure}
