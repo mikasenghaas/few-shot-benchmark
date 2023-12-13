@@ -722,10 +722,13 @@ def plot_heatmap_on_ax(
     ylabels=False,
     vmin=0,
     vmax=1,
+    pos="NW",
 ):
     cax = ax.matshow(results, cmap=cmap, vmin=vmin, vmax=vmax, aspect="auto")
     ax.set_yticks(
-        np.arange(len(param1_values)), param1_values if ylabels else [], fontsize=22
+        np.arange(len(param1_values)),
+        param1_values if ylabels else [],
+        fontsize=22
     )
     ax.set_xticks(
         np.arange(len(param2_values)),
@@ -733,16 +736,17 @@ def plot_heatmap_on_ax(
         rotation="vertical",
         fontsize=22,
     )
+
     ax.tick_params(
         axis="both",
-        right=1,
-        left=0,
-        bottom=0,
-        top=1,
-        labelbottom=0,
-        labeltop=1,
-        labelleft=0,
-        labelright=1,
+        right= "E" in pos,
+        left="W" in pos ,
+        bottom="S" in pos,
+        top="N" in pos,
+        labelbottom= "S" in pos,
+        labeltop= "N" in pos,
+        labelleft= "W" in pos,
+        labelright= "E" in pos,
     )
     ax.grid(False)
     return cax
@@ -838,6 +842,112 @@ def grid(
     #              fontsize=16, frameon=False, bbox_to_anchor=(0.5, 1))
     # colorbar ticks
     cb.ax.set_xticklabels([f"{tick:.2f}" for tick in ticks], fontsize=22)
+    return fig
+
+
+def combined_grid(
+    df1,
+    df2,
+    params,
+    metric="mean",
+    cmap="YlGn",
+    vmin=None,
+    vmax=None,
+    figsize=(10, 10),
+    rename_dict=None,
+):
+    n = len(params)
+    fig, axs = plt.subplots(nrows=n, ncols=n, figsize=figsize)
+    fig.tight_layout(pad=3.0)
+
+    rename = lambda x: rename_dict[x] if rename_dict and x in rename_dict else x
+
+    vmin1, vmax1 = calcualte_vs(df1, params, metric, vmin=vmin, vmax=vmax)
+    vmin2, vmax2 = calcualte_vs(df2, params, metric, vmin=vmin, vmax=vmax)
+
+    for i in range(n):
+        # top part
+        for j in range(i + 1, n):
+            param1 = params[i]
+            param2 = params[j]
+            ax = axs[i][j]
+            df_agg = aggregate(df1, [param1, param2], metric)[
+                ("eval", "test/acc", metric)
+            ].unstack()
+            cax = plot_heatmap_on_ax(
+                ax,
+                df_agg,
+                [rename(x) for x in df_agg.index],
+                [rename(x) for x in df_agg.columns],
+                cmap,
+                i == 0,
+                j == 0,
+                vmin=vmin1,
+                vmax=vmax1,
+            )
+
+        # bottom part
+        for j in range(0, i):
+            ax = axs[i][j]
+            param1 = params[i]
+            param2 = params[j]
+            df_agg = aggregate(df2, [param1, param2], metric)[
+                ("eval", "test/acc", metric)
+            ].unstack()
+            cax = plot_heatmap_on_ax(
+                ax,
+                df_agg,
+                [rename(x) for x in df_agg.index],
+                [rename(x) for x in df_agg.columns],
+                cmap,
+                i == 0,
+                j == 0,
+                vmin=vmin2,
+                vmax=vmax2,
+                pos="SW",
+            )
+
+        # labels
+        ax = axs[i][i]
+        ax.set_facecolor("white")
+        param = params[i]
+        ax.set_xlabel(
+            rename(param[1]),
+            fontsize=22,
+            fontweight="bold",
+            verticalalignment="center",
+            horizontalalignment="center",
+        )
+        ax.xaxis.set_label_coords(0.5, 0.5)
+        df_agg = aggregate(df1, [param, param], metric)[
+            ("eval", "test/acc", metric)
+        ].unstack() * np.nan
+        plot_heatmap_on_ax(
+            ax,
+            df_agg,
+            [rename(x) for x in df_agg.index],
+            [rename(x) for x in df_agg.columns],
+            cmap,
+            i==0,
+            i==0,
+            pos="NW",
+        )
+
+    fig.subplots_adjust(wspace=0.02, hspace=0.02)
+
+    for ax in axs.flat:
+        ax.set_anchor("NE")
+
+    # colorbar anchor to the left
+    # ticks = np.linspace(vmin, vmax, 5)
+    # cb = fig.colorbar(
+    #     cax, ax=axs[-1, 0:2], orientation="horizontal", aspect=15, ticks=ticks
+    # )
+    # # legend with red dot and best hyperparameters
+    # cb.ax.legend([plt.scatter([], [], marker='o', color='red')], ['best hyperparameters'], loc='lower center', ncol=2,
+    #              fontsize=16, frameon=False, bbox_to_anchor=(0.5, 1))
+    # colorbar ticks
+    # cb.ax.set_xticklabels([f"{tick:.2f}" for tick in ticks], fontsize=22)
     return fig
 
 
